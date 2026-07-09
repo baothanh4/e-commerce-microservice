@@ -7,6 +7,8 @@ import { CartDrawer } from './components/CartDrawer';
 import { ProductList } from './components/ProductList';
 import { ProductDetail } from './components/ProductDetail';
 import { Footer } from './components/Footer';
+import { LoginPage } from './components/LoginPage';
+import { RegisterPage } from './components/RegisterPage';
 import type { Product, CartItem } from './types';
 import { Sparkles, ArrowRight } from 'lucide-react';
 
@@ -278,7 +280,7 @@ function App() {
   const [activeCategory, setActiveCategory] = useState('Tất cả');
   
   // Navigation Routing States
-  const [currentView, setCurrentView] = useState<'home' | 'products' | 'detail'>('home');
+  const [currentView, setCurrentView] = useState<'home' | 'products' | 'detail' | 'login' | 'register'>('home');
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [sortBy, setSortBy] = useState('Phổ biến nhất');
 
@@ -387,7 +389,7 @@ function App() {
 
 
   // Navigation router
-  const handleNavigate = (view: 'home' | 'products' | 'detail', sortByOption?: string) => {
+  const handleNavigate = (view: 'home' | 'products' | 'detail' | 'login' | 'register', sortByOption?: string) => {
     setCurrentView(view);
     if (sortByOption) {
       setSortBy(sortByOption);
@@ -527,6 +529,18 @@ function App() {
               onProductClick={handleProductDetailNavigate}
               allProducts={MOCK_PRODUCTS}
             />
+          </div>
+        )}
+
+        {currentView === 'login' && (
+          <div className="animate-fadeIn">
+            <LoginPage onNavigate={handleNavigate} />
+          </div>
+        )}
+
+        {currentView === 'register' && (
+          <div className="animate-fadeIn">
+            <RegisterPage onNavigate={handleNavigate} />
           </div>
         )}
       </div>

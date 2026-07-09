@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, ShoppingCart, Heart, Sun, Moon, Menu, X } from 'lucide-react';
+import { Search, ShoppingCart, Heart, Sun, Moon, Menu, X, User } from 'lucide-react';
 
 interface HeaderProps {
   searchQuery: string;
@@ -9,8 +9,8 @@ interface HeaderProps {
   isDarkMode: boolean;
   toggleDarkMode: () => void;
   wishlistCount: number;
-  onNavigate: (view: 'home' | 'products' | 'detail', sortBy?: string) => void;
-  currentView: 'home' | 'products' | 'detail';
+  onNavigate: (view: 'home' | 'products' | 'detail' | 'login' | 'register', sortBy?: string) => void;
+  currentView: 'home' | 'products' | 'detail' | 'login' | 'register';
   currentSortBy: string;
 }
 
@@ -133,6 +133,19 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </button>
 
+          {/* Login/User Button */}
+          <button
+            onClick={() => onNavigate('login')}
+            className={`hidden md:flex items-center gap-1.5 px-4 py-2 rounded-lg font-label-sm text-label-sm transition-all duration-200 active:scale-95 ${
+              currentView === 'login' || currentView === 'register'
+                ? 'bg-primary dark:bg-primary-fixed text-on-primary dark:text-primary shadow-md'
+                : 'bg-surface-container dark:bg-surface-container/20 text-primary dark:text-primary-fixed-dim hover:bg-surface-container-high dark:hover:bg-surface-container/30 border border-outline-variant/40 dark:border-outline-variant/15'
+            }`}
+          >
+            <User className="w-4 h-4" />
+            <span>Đăng Nhập</span>
+          </button>
+
           {/* Mobile Menu Button */}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -194,6 +207,17 @@ export const Header: React.FC<HeaderProps> = ({
               className="text-on-surface-variant dark:text-tertiary-fixed-dim hover:text-secondary py-2 font-body-md text-body-md text-left focus:outline-none"
             >
               Brands
+            </button>
+            <button 
+              onClick={() => { onNavigate('login'); setIsMobileMenuOpen(false); }}
+              className={`py-2 font-body-md text-body-md text-left focus:outline-none mt-2 flex items-center gap-2 px-4 rounded-lg transition-colors ${
+                currentView === 'login'
+                  ? 'bg-primary dark:bg-primary-fixed text-on-primary dark:text-primary font-bold'
+                  : 'bg-surface-container dark:bg-surface-container/20 text-primary dark:text-primary-fixed-dim hover:bg-surface-container-high'
+              }`}
+            >
+              <User className="w-4 h-4" />
+              Đăng Nhập
             </button>
           </nav>
         </div>

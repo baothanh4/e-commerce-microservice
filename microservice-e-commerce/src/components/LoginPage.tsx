@@ -3,9 +3,10 @@ import { Eye, EyeOff, Mail, Lock, ArrowRight, ShoppingBag } from 'lucide-react';
 
 interface LoginPageProps {
   onNavigate: (view: 'home' | 'products' | 'detail' | 'login' | 'register') => void;
+  onLoginSuccess: (user: { name: string; email: string; token: string; role: string }) => void;
 }
 
-export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
+export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onLoginSuccess }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -13,6 +14,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const validate = (): boolean => {
     const newErrors: { email?: string; password?: string } = {};
@@ -35,11 +37,45 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
     if (!validate()) return;
 
     setIsLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setIsLoading(false);
-    alert('Đăng nhập thành công! Đây là phiên bản demo.');
-    onNavigate('home');
+    setSubmitError(null);
+    try {
+      const payload = { email, password };
+
+      let response;
+      try {
+        response = await fetch('http://localhost:8080/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      } catch (err) {
+        console.warn('Không kết nối được Gateway 8080, thử gọi trực tiếp auth-service 8083...');
+        response = await fetch('http://localhost:8083/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      }
+
+      const data = await response.json();
+
+      if (response.ok) {
+        onLoginSuccess({
+          name: data.name,
+          email: data.email,
+          token: data.token,
+          role: data.role
+        });
+        onNavigate('home');
+      } else {
+        setSubmitError(data.message || 'Email hoặc mật khẩu không hợp lệ');
+      }
+    } catch (error: any) {
+      console.error(error);
+      setSubmitError('Lỗi kết nối đến hệ thống: ' + error.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -74,6 +110,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
 
           {/* Login Form */}
           <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+            {submitError && (
+              <div className="p-3.5 bg-error-container/40 dark:bg-error-container/10 border border-error/20 rounded-xl text-error dark:text-error-container font-body-sm text-body-sm flex items-center gap-2 animate-fadeIn">
+                <span className="w-1.5 h-1.5 bg-error rounded-full flex-shrink-0" />
+                <span>{submitError}</span>
+              </div>
+            )}
             {/* Email Field */}
             <div>
               <label

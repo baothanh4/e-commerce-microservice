@@ -44,6 +44,8 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
 
   const updateField = (field: keyof FormData, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -114,10 +116,51 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
     if (!validate()) return;
 
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setIsLoading(false);
-    alert('Đăng ký thành công! Đây là phiên bản demo.');
-    onNavigate('login');
+    setSubmitError(null);
+    setSubmitSuccess(null);
+    try {
+      const payload = {
+        name: formData.fullName,
+        email: formData.email,
+        phone: formData.phone || null,
+        dob: formData.dob || null,
+        gender: formData.gender ? formData.gender.toUpperCase() : null,
+        password: formData.password,
+        confirmPassword: formData.confirmPassword
+      };
+
+      let response;
+      try {
+        response = await fetch('http://localhost:8080/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      } catch (err) {
+        console.warn('Không kết nối được Gateway 8080, thử gọi trực tiếp auth-service 8083...');
+        response = await fetch('http://localhost:8083/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      }
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setSubmitSuccess(data.message || 'Đăng ký thành công! Đang chuyển hướng...');
+        setTimeout(() => {
+          onNavigate('login');
+        }, 1500);
+      } else {
+        setSubmitError(data.message || 'Đăng ký thất bại, vui lòng kiểm tra lại');
+      }
+    } catch (error: any) {
+      console.error(error);
+      setSubmitError('Lỗi kết nối đến hệ thống: ' + error.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const inputBaseClass = (field: string, hasError: boolean) =>
@@ -172,6 +215,18 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
 
           {/* Register Form */}
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+            {submitError && (
+              <div className="p-3.5 bg-error-container/40 dark:bg-error-container/10 border border-error/20 rounded-xl text-error dark:text-error-container font-body-sm text-body-sm flex items-center gap-2 animate-fadeIn">
+                <span className="w-1.5 h-1.5 bg-error rounded-full flex-shrink-0" />
+                <span>{submitError}</span>
+              </div>
+            )}
+            {submitSuccess && (
+              <div className="p-3.5 bg-emerald-100 dark:bg-emerald-950/30 border border-emerald-500/25 rounded-xl text-emerald-600 dark:text-emerald-400 font-body-sm text-body-sm flex items-center gap-2 animate-fadeIn">
+                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full flex-shrink-0" />
+                <span>{submitSuccess}</span>
+              </div>
+            )}
             {/* Full Name */}
             <div>
               <label htmlFor="reg-name" className="block font-label-sm text-label-sm text-on-surface dark:text-primary-fixed-dim/90 mb-1.5 uppercase tracking-wider">

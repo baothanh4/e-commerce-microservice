@@ -9,6 +9,7 @@ import { ProductDetail } from './components/ProductDetail';
 import { Footer } from './components/Footer';
 import { LoginPage } from './components/LoginPage';
 import { RegisterPage } from './components/RegisterPage';
+import { ProfilePage } from './components/ProfilePage';
 import type { Product, CartItem } from './types';
 import { Sparkles, ArrowRight } from 'lucide-react';
 
@@ -279,8 +280,25 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('Tất cả');
   
+  // User Authentication State
+  const [currentUser, setCurrentUser] = useState<{ name: string; email: string; token: string; role: string } | null>(() => {
+    const savedUser = localStorage.getItem('currentUser');
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
+
+  const handleLoginSuccess = (user: { name: string; email: string; token: string; role: string }) => {
+    localStorage.setItem('currentUser', JSON.stringify(user));
+    setCurrentUser(user);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('currentUser');
+    setCurrentUser(null);
+    setCurrentView('home');
+  };
+
   // Navigation Routing States
-  const [currentView, setCurrentView] = useState<'home' | 'products' | 'detail' | 'login' | 'register'>('home');
+  const [currentView, setCurrentView] = useState<'home' | 'products' | 'detail' | 'login' | 'register' | 'profile'>('home');
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [sortBy, setSortBy] = useState('Phổ biến nhất');
 
@@ -389,7 +407,7 @@ function App() {
 
 
   // Navigation router
-  const handleNavigate = (view: 'home' | 'products' | 'detail' | 'login' | 'register', sortByOption?: string) => {
+  const handleNavigate = (view: 'home' | 'products' | 'detail' | 'login' | 'register' | 'profile', sortByOption?: string) => {
     setCurrentView(view);
     if (sortByOption) {
       setSortBy(sortByOption);
@@ -437,6 +455,8 @@ function App() {
         onNavigate={handleNavigate}
         currentView={currentView}
         currentSortBy={sortBy}
+        currentUser={currentUser}
+        onLogout={handleLogout}
       />
 
       {/* Main Views Router */}
@@ -534,13 +554,19 @@ function App() {
 
         {currentView === 'login' && (
           <div className="animate-fadeIn">
-            <LoginPage onNavigate={handleNavigate} />
+            <LoginPage onNavigate={handleNavigate} onLoginSuccess={handleLoginSuccess} />
           </div>
         )}
 
         {currentView === 'register' && (
           <div className="animate-fadeIn">
             <RegisterPage onNavigate={handleNavigate} />
+          </div>
+        )}
+
+        {currentView === 'profile' && (
+          <div className="animate-fadeIn">
+            <ProfilePage onNavigate={handleNavigate} currentUser={currentUser} onLogout={handleLogout} />
           </div>
         )}
       </div>

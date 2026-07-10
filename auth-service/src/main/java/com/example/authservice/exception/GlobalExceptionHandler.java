@@ -30,12 +30,14 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<MessageResponse> handleRuntime(RuntimeException ex) {
+        ex.printStackTrace();
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new MessageResponse(ex.getMessage()));
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<MessageResponse> handleGeneral(Exception ex) {
+        ex.printStackTrace();
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new MessageResponse("Đã xảy ra lỗi: " + ex.getMessage()));
     }

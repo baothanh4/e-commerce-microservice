@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Eye, EyeOff, Mail, Lock, ArrowRight, ShoppingBag } from 'lucide-react';
 
 interface LoginPageProps {
-  onNavigate: (view: 'home' | 'products' | 'detail' | 'login' | 'register') => void;
+  onNavigate: (view: 'home' | 'products' | 'detail' | 'login' | 'register' | 'dashboard') => void;
   onLoginSuccess: (user: { name: string; email: string; token: string; role: string }) => void;
 }
 
@@ -66,7 +66,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onLoginSuccess
           token: data.token,
           role: data.role
         });
-        onNavigate('home');
+        if (data.role === 'ADMIN') {
+          onNavigate('dashboard');
+        } else {
+          onNavigate('home');
+        }
       } else {
         setSubmitError(data.message || 'Email hoặc mật khẩu không hợp lệ');
       }

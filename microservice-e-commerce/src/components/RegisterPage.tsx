@@ -1,10 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Eye, EyeOff, Mail, Lock, User, Phone, Calendar, ChevronDown, ArrowRight, ShoppingBag, Check } from 'lucide-react';
 
-type ViewType = 'home' | 'products' | 'detail' | 'login' | 'register';
+type ViewType = 'home' | 'products' | 'detail' | 'login' | 'register' | 'dashboard';
 
 interface RegisterPageProps {
   onNavigate: (view: ViewType) => void;
+  onRegisterSuccess: (user: { name: string; email: string; token: string; role: string }) => void;
 }
 
 interface FormData {
@@ -27,7 +28,7 @@ interface FormErrors {
   agreeTerms?: string;
 }
 
-export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
+export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate, onRegisterSuccess }) => {
   const [formData, setFormData] = useState<FormData>({
     fullName: '',
     email: '',
@@ -46,6 +47,65 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
+
+  // Address-related states
+  const [provinceCode, setProvinceCode] = useState('');
+  const [wardCode, setWardCode] = useState('');
+  const [addressDetail, setAddressDetail] = useState('');
+  const [provinces, setProvinces] = useState<any[]>([]);
+  const [wards, setWards] = useState<any[]>([]);
+
+  // Fetch provinces on mount
+  useEffect(() => {
+    const fetchProvinces = async () => {
+      try {
+        const response = await fetch('http://localhost:8080/users/provinces');
+        if (response.ok) {
+          const data = await response.json();
+          setProvinces(data);
+        }
+      } catch (err) {
+        try {
+          const response = await fetch('http://localhost:8081/users/provinces');
+          if (response.ok) {
+            const data = await response.json();
+            setProvinces(data);
+          }
+        } catch (err2) {
+          console.error(err2);
+        }
+      }
+    };
+    fetchProvinces();
+  }, []);
+
+  // Fetch wards when provinceCode changes
+  useEffect(() => {
+    if (!provinceCode) {
+      setWards([]);
+      return;
+    }
+    const fetchWards = async () => {
+      try {
+        const response = await fetch(`http://localhost:8080/users/provinces/${provinceCode}/wards`);
+        if (response.ok) {
+          const data = await response.json();
+          setWards(data);
+        }
+      } catch (err) {
+        try {
+          const response = await fetch(`http://localhost:8081/users/provinces/${provinceCode}/wards`);
+          if (response.ok) {
+            const data = await response.json();
+            setWards(data);
+          }
+        } catch (err2) {
+          console.error(err2);
+        }
+      }
+    };
+    fetchWards();
+  }, [provinceCode]);
 
   const updateField = (field: keyof FormData, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -126,7 +186,10 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
         dob: formData.dob || null,
         gender: formData.gender ? formData.gender.toUpperCase() : null,
         password: formData.password,
-        confirmPassword: formData.confirmPassword
+        confirmPassword: formData.confirmPassword,
+        provinceCode: provinceCode || null,
+        wardCode: wardCode || null,
+        addressDetail: addressDetail || null,
       };
 
       let response;
@@ -148,10 +211,55 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
       const data = await response.json();
 
       if (response.ok) {
-        setSubmitSuccess(data.message || 'Đăng ký thành công! Đang chuyển hướng...');
-        setTimeout(() => {
-          onNavigate('login');
-        }, 1500);
+        setSubmitSuccess('Đăng ký thành công! Đang tự động đăng nhập...');
+        
+        // Auto-login request after successful registration
+        try {
+          const loginPayload = { email: formData.email, password: formData.password };
+          let loginResponse;
+          try {
+            loginResponse = await fetch('http://localhost:8080/auth/login', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(loginPayload),
+            });
+          } catch (err) {
+            console.warn('Không kết nối được Gateway 8080, thử gọi trực tiếp auth-service 8083...');
+            loginResponse = await fetch('http://localhost:8083/auth/login', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(loginPayload),
+            });
+          }
+
+          if (loginResponse.ok) {
+            const loginData = await loginResponse.json();
+            onRegisterSuccess({
+              name: loginData.name,
+              email: loginData.email,
+              token: loginData.token,
+              role: loginData.role
+            });
+            if (loginData.role === 'ADMIN') {
+              setTimeout(() => {
+                onNavigate('dashboard');
+              }, 1000);
+            } else {
+              setTimeout(() => {
+                onNavigate('home');
+              }, 1000);
+            }
+          } else {
+            setTimeout(() => {
+              onNavigate('login');
+            }, 1500);
+          }
+        } catch (loginErr) {
+          console.error('Lỗi tự động đăng nhập:', loginErr);
+          setTimeout(() => {
+            onNavigate('login');
+          }, 1500);
+        }
       } else {
         setSubmitError(data.message || 'Đăng ký thất bại, vui lòng kiểm tra lại');
       }
@@ -459,6 +567,64 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
                 )}
               </div>
               <ErrorMessage message={errors.confirmPassword} />
+            </div>
+
+            {/* Delivery Address */}
+            <div className="pt-2">
+              <div className="p-4 bg-surface-container dark:bg-primary/10 rounded-xl border border-outline-variant/30 dark:border-outline-variant/10 grid grid-cols-1 gap-4">
+                <h4 className="font-bold text-body-md text-primary dark:text-primary-fixed-dim">
+                  Địa chỉ giao hàng đầu tiên
+                </h4>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="font-label-sm text-label-sm text-on-surface-variant dark:text-tertiary-fixed-dim/80 uppercase tracking-wider">
+                    Tỉnh / Thành Phố
+                  </label>
+                  <select
+                    value={provinceCode}
+                    onChange={(e) => { setProvinceCode(e.target.value); setWardCode(''); }}
+                    required
+                    className="w-full h-[46px] px-3 bg-surface-container-lowest dark:bg-primary/20 border border-outline-variant/50 dark:border-outline-variant/15 rounded-xl font-body-md text-body-md text-on-surface dark:text-inverse-on-surface focus:outline-none focus:border-secondary-container transition-all outline-none"
+                  >
+                    <option value="">-- Chọn Tỉnh/Thành phố --</option>
+                    {provinces.map(p => (
+                      <option key={p.code} value={p.code}>{p.fullName}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="font-label-sm text-label-sm text-on-surface-variant dark:text-tertiary-fixed-dim/80 uppercase tracking-wider">
+                    Xã / Phường / Thị Trấn
+                  </label>
+                  <select
+                    value={wardCode}
+                    onChange={(e) => setWardCode(e.target.value)}
+                    required
+                    disabled={!provinceCode}
+                    className="w-full h-[46px] px-3 bg-surface-container-lowest dark:bg-primary/20 border border-outline-variant/50 dark:border-outline-variant/15 rounded-xl font-body-md text-body-md text-on-surface dark:text-inverse-on-surface focus:outline-none focus:border-secondary-container transition-all outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <option value="">-- Chọn Xã/Phường/Thị trấn --</option>
+                    {wards.map(w => (
+                      <option key={w.code} value={w.code}>{w.fullName}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="font-label-sm text-label-sm text-on-surface-variant dark:text-tertiary-fixed-dim/80 uppercase tracking-wider">
+                    Địa chỉ chi tiết (Số nhà, ngõ, đường...)
+                  </label>
+                  <input
+                    type="text"
+                    value={addressDetail}
+                    onChange={(e) => setAddressDetail(e.target.value)}
+                    required
+                    placeholder="Số 10, ngõ 20, đường Láng"
+                    className="w-full h-[46px] px-3 bg-surface-container-lowest dark:bg-primary/20 border border-outline-variant/50 dark:border-outline-variant/15 rounded-xl font-body-md text-body-md text-on-surface dark:text-inverse-on-surface focus:outline-none focus:border-secondary-container transition-all outline-none"
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Terms and Conditions */}

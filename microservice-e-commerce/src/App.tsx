@@ -10,6 +10,7 @@ import { Footer } from './components/Footer';
 import { LoginPage } from './components/LoginPage';
 import { RegisterPage } from './components/RegisterPage';
 import { ProfilePage } from './components/ProfilePage';
+import { ManagerDashboard } from './components/ManagerDashboard';
 import type { Product, CartItem } from './types';
 import { Sparkles, ArrowRight } from 'lucide-react';
 
@@ -298,7 +299,7 @@ function App() {
   };
 
   // Navigation Routing States
-  const [currentView, setCurrentView] = useState<'home' | 'products' | 'detail' | 'login' | 'register' | 'profile'>('home');
+  const [currentView, setCurrentView] = useState<'home' | 'products' | 'detail' | 'login' | 'register' | 'profile' | 'dashboard'>('home');
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [sortBy, setSortBy] = useState('Phổ biến nhất');
 
@@ -407,7 +408,7 @@ function App() {
 
 
   // Navigation router
-  const handleNavigate = (view: 'home' | 'products' | 'detail' | 'login' | 'register' | 'profile', sortByOption?: string) => {
+  const handleNavigate = (view: 'home' | 'products' | 'detail' | 'login' | 'register' | 'profile' | 'dashboard', sortByOption?: string) => {
     setCurrentView(view);
     if (sortByOption) {
       setSortBy(sortByOption);
@@ -444,23 +445,25 @@ function App() {
     <div className="min-h-screen bg-surface dark:bg-primary text-on-surface dark:text-inverse-on-surface transition-colors duration-300 flex flex-col justify-between">
       
       {/* Top Navigation */}
-      <Header 
-        searchQuery={searchQuery}
-        setSearchQuery={handleSearchChange}
-        cartCount={cartCount}
-        onCartClick={() => setIsCartOpen(true)}
-        isDarkMode={isDarkMode}
-        toggleDarkMode={toggleDarkMode}
-        wishlistCount={favorites.length}
-        onNavigate={handleNavigate}
-        currentView={currentView}
-        currentSortBy={sortBy}
-        currentUser={currentUser}
-        onLogout={handleLogout}
-      />
+      {currentView !== 'dashboard' && (
+        <Header 
+          searchQuery={searchQuery}
+          setSearchQuery={handleSearchChange}
+          cartCount={cartCount}
+          onCartClick={() => setIsCartOpen(true)}
+          isDarkMode={isDarkMode}
+          toggleDarkMode={toggleDarkMode}
+          wishlistCount={favorites.length}
+          onNavigate={handleNavigate}
+          currentView={currentView}
+          currentSortBy={sortBy}
+          currentUser={currentUser}
+          onLogout={handleLogout}
+        />
+      )}
 
       {/* Main Views Router */}
-      <div className="flex-grow">
+      <div className={currentView === 'dashboard' ? '' : 'flex-grow'}>
         {currentView === 'home' && (
           <div className="animate-fadeIn">
             {/* Banner Hero */}
@@ -560,7 +563,7 @@ function App() {
 
         {currentView === 'register' && (
           <div className="animate-fadeIn">
-            <RegisterPage onNavigate={handleNavigate} />
+            <RegisterPage onNavigate={handleNavigate} onRegisterSuccess={handleLoginSuccess} />
           </div>
         )}
 
@@ -569,10 +572,14 @@ function App() {
             <ProfilePage onNavigate={handleNavigate} currentUser={currentUser} onLogout={handleLogout} />
           </div>
         )}
+
+        {currentView === 'dashboard' && (
+          <ManagerDashboard onNavigate={handleNavigate} currentUser={currentUser} onLogout={handleLogout} />
+        )}
       </div>
 
       {/* Footer */}
-      <Footer />
+      {currentView !== 'dashboard' && <Footer />}
 
       {/* Sliding Shopping Cart Drawer */}
       <CartDrawer 

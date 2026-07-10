@@ -21,7 +21,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 
 import com.example.authservice.dto.UserProfileDto;
+import com.example.authservice.dto.AddressDto;
+import com.example.authservice.dto.ProvinceDto;
+import com.example.authservice.dto.WardDto;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import com.example.authservice.client.UserClient;
 
 @Service
 @RequiredArgsConstructor
@@ -31,6 +35,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final AuthenticationManager authenticationManager;
+    private final UserClient userClient;
 
     @Transactional
     public String register(RegisterRequest request) {
@@ -77,6 +82,35 @@ public class AuthService {
 
         userRepository.save(user);
 
+        // Gọi đồng bộ sang user-service qua Feign Client để tạo thông tin cá nhân
+        java.util.List<AddressDto> addresses = null;
+        if (request.getProvinceCode() != null && !request.getProvinceCode().isBlank()
+                && request.getWardCode() != null && !request.getWardCode().isBlank()
+                && request.getAddressDetail() != null && !request.getAddressDetail().isBlank()) {
+            
+            addresses = new java.util.ArrayList<>();
+            AddressDto addressDto = AddressDto.builder()
+                    .receiverName(request.getName())
+                    .phoneNumber(request.getPhone())
+                    .addressDetail(request.getAddressDetail())
+                    .isDefault(true)
+                    .label("HOME")
+                    .province(ProvinceDto.builder().code(request.getProvinceCode()).build())
+                    .ward(WardDto.builder().code(request.getWardCode()).build())
+                    .build();
+            addresses.add(addressDto);
+        }
+
+        UserProfileDto profileDto = UserProfileDto.builder()
+                .name(request.getName())
+                .email(request.getEmail())
+                .phone(request.getPhone())
+                .dob(request.getDob())
+                .gender(request.getGender())
+                .addresses(addresses)
+                .build();
+        userClient.createUser(profileDto);
+
         return "Đăng ký thành công!";
     }
 
@@ -109,15 +143,11 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public UserProfileDto getProfile(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("Không tìm thấy thông tin tài khoản"));
-        return UserProfileDto.builder()
-                .name(user.getName())
-                .email(user.getEmail())
-                .phone(user.getPhone())
-                .dob(user.getDob() != null ? user.getDob().toString() : null)
-                .gender(user.getGender() != null ? user.getGender().name() : null)
-                .build();
+        if (!userRepository.existsByEmail(email)) {
+            throw new UsernameNotFoundException("Không tìm thấy thông tin tài khoản");
+        }
+        // Lấy thông tin cá nhân từ user-service
+        return userClient.getProfileByEmail(email);
     }
 
     @Transactional
@@ -125,37 +155,11 @@ public class AuthService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("Không tìm thấy thông tin tài khoản"));
 
+        // Cập nhật tên ở local DB
         user.setName(request.getName());
-        user.setPhone(request.getPhone());
-
-        if (request.getDob() != null && !request.getDob().isBlank()) {
-            try {
-                user.setDob(LocalDate.parse(request.getDob()));
-            } catch (Exception e) {
-                throw new RuntimeException("Ngày sinh không hợp lệ. Định dạng: yyyy-MM-dd");
-            }
-        } else {
-            user.setDob(null);
-        }
-
-        if (request.getGender() != null && !request.getGender().isBlank()) {
-            try {
-                user.setGender(Gender.valueOf(request.getGender().toUpperCase()));
-            } catch (IllegalArgumentException e) {
-                throw new RuntimeException("Giới tính không hợp lệ. Chọn: MALE, FEMALE, OTHER");
-            }
-        } else {
-            user.setGender(null);
-        }
-
         userRepository.save(user);
 
-        return UserProfileDto.builder()
-                .name(user.getName())
-                .email(user.getEmail())
-                .phone(user.getPhone())
-                .dob(user.getDob() != null ? user.getDob().toString() : null)
-                .gender(user.getGender() != null ? user.getGender().name() : null)
-                .build();
+        // Gọi sang user-service để cập nhật thông tin chi tiết và trả về kết quả mới nhất
+        return userClient.updateProfileByEmail(email, request);
     }
 }

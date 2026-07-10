@@ -1,0 +1,1097 @@
+import React, { useState, useMemo, useRef } from 'react';
+
+interface ProductItem {
+  id: string;
+  name: string;
+  sku: string;
+  category: string;
+  stock: number;
+  price: number;
+  image: string; // URL or ObjectURL from upload
+  description?: string;
+}
+
+interface ManagerDashboardProps {
+  onNavigate: (view: 'home' | 'products' | 'detail' | 'login' | 'register' | 'profile' | 'dashboard') => void;
+  currentUser?: { name: string; email: string; role: string } | null;
+  onLogout?: () => void;
+}
+
+const INITIAL_PRODUCTS: ProductItem[] = [
+  {
+    id: '1',
+    name: 'Ghế Thư Giãn Lusso',
+    sku: 'FUR-LU-001',
+    category: 'Nội thất',
+    stock: 45,
+    price: 8500000,
+    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBfrh-5pYCAMpA5f8DnQAwem-l6MArBTGKY60DG1oS4YuhyIjU0gbS-l-YuBZeleopO_N7v8fB1-KlRACBabgE_Alt8bfuLZcu4HVNpE0_DndSgc-lm1ZNYvY_O4LHecnFxr_W1fFquxlLzpGuNWW29fLKdTbEME9G9G2uXt7qr_2T-sGsoM8N8Dg8CDRdCFiYpeQOvPRQJc_aTyAWR3EWL0642V2mjbk5-sVouzkesg6ihuQVhVMzcsO7_pApEeX6nB2AAsDOBiQ',
+    description: 'Ghế thư giãn Lusso mang lại nét sang trọng cho mọi không gian với đệm nhung êm ái.'
+  },
+  {
+    id: '2',
+    name: 'Bàn Trà Gỗ Sồi Oaka',
+    sku: 'FUR-OA-002',
+    category: 'Nội thất',
+    stock: 12,
+    price: 5900000,
+    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDTwnGbduEbK4lrBhGO4OsZDWK5VtI1ikZA-6M9hxleOcq8fp_2e_MIFC_z9hzpr7S0ufa5RHFnqT3U_S2KodyECRXTBH25zsRxaIAl-wD0qpwnK1CWa3W_fM5ncT3hSV_C1Hr_s6oJnS_dSR_62fmwA3w8drpAHqnLoTpVsRqGBwf4w2OeaX2l59nYyLYp0oRT-LoYYE2HXcnJbAXhiACXakYTf7s857GtPszO1Lqx8fGGgkM-3Nw3krg94SQ3V3krthKH1mTBKQ',
+    description: 'Bàn trà Oaka làm từ gỗ sồi tuyển chọn kỹ lưỡng, vân gỗ tự nhiên sắc nét.'
+  },
+  {
+    id: '3',
+    name: 'Sofa Da Bò Minimalist',
+    sku: 'FUR-SO-003',
+    category: 'Nội thất',
+    stock: 8,
+    price: 42000000,
+    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAc_NLLgeQi4KRnn31YHOuYJDD_D0pTWhujLu4e5fQtYwLiVznYLd2udhXb_FTCVU8Fm1tVI2bNLRy24LXM0ih-eF4EIfAvyTjOq_pM48wCG5iY7EUGtbGWWsA_cBSnx_sNNGeTHR2EG-fDTp1g6ZWtuH7-grqV0St2km6RUvMlNyH6hlXGrkK7ITiAzjKV2mO395CYOXDEM7jpMKSbdaN5JqS8Jp92MeGdHzErIUkBqw4kc0V8LXK9JnQc13mNHVgn82YMRgFgOA',
+    description: 'Sofa da bò cao cấp tối giản mang đến không gian phòng khách hiện đại.'
+  },
+  {
+    id: '4',
+    name: 'Đèn Đứng Nova Brass',
+    sku: 'DEC-NO-004',
+    category: 'Đồ trang trí',
+    stock: 15,
+    price: 3200000,
+    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAgju5KWp1okl1BuFV9zyXORLeCytWwb3gNtd4T4Hk6WxbEGdEvm9XYbcReHCUU-2Pyl3dHwbTPHLtzF93zZtU2SJEfuIw_C5Kjf0dD17mlAVRrYCgUm3UHxFY4kQSFuNROH88mVGI9zD7C-iBWjP1o4fEfXqAXl9xt57fZrzvg8PaVqiSw3t0utO6YN18SjVCoazlZDGkhE5mldk5GHkWpKQpZangc23Q1yO4OszrUcyRiKTejG-y_kEI8u1PQVZwM2-1c2Nf2hQ',
+    description: 'Đèn Nova Brass toát lên vẻ cổ điển pha trộn hiện đại, kết cấu vững chãi từ đồng nguyên khối.'
+  },
+  {
+    id: '5',
+    name: 'Giường Bọc Nỉ Gray Lusso',
+    sku: 'FUR-GL-005',
+    category: 'Nội thất',
+    stock: 5,
+    price: 24500000,
+    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAqb6HaIhqYSFINioZgapMiKzDkwxsCinNl0TojZGkQwQbJkTIV9IhmdEEr9UeTw5iS6o8Ycqdnnhmj7kQRAfZgjHBBD9MwK_CV_5o8nM51u-wmDD7X4VDbEJUNqGrdzKoJXP_BEDCDjczYhp1CcN5dVpM3-yPl7dmWIryFGRXSmYwHbGrvlmZrVLRDLI4mvIe8hoJlRzirpUae10S4WsL5O-cF77Z8eLl6jFUrWJcf-Wl0eI0wgz7emZ9MbeytROLIz56uytpPvA',
+    description: 'Giường ngủ Lusso Gray sở hữu đầu giường bọc nỉ xám thời thượng mang lại giấc ngủ êm ái.'
+  },
+  {
+    id: '6',
+    name: 'Bộ Bàn Ăn Gỗ Walnut',
+    sku: 'FUR-WA-006',
+    category: 'Nội thất',
+    stock: 0,
+    price: 18200000,
+    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDCL68nTTiEgfC0ocTEDEbvx17h00UWYfPI-5kwOAHVOgmlz2uZ85SpL8SDnNbCFIDlfvL1ZewrBL6xtok6NPLe3_Oj5GXH46zQeP5ZydJEqUK08vn2dEE2WxtUFIhsn_ccU8kgRiA7R03dH6vHnXyonieNSmDCDpjUUhaYJDuje8Y1hBFphvPLraamS2VDsRA0G-1gcS-qCuxFRvp_hn8Xy8vjr1kWBSgogJBai97vAVRz3vUMJi11AkVFnzSQhPPMYaFSU0j47Q',
+    description: 'Bộ bàn ăn Walnut kết hợp giữa bàn gỗ óc chó cao cấp và 4 ghế tựa êm ái.'
+  },
+  {
+    id: '7',
+    name: 'Gối Tựa Sofa Premium Cotton',
+    sku: 'DEC-PC-007',
+    category: 'Đồ trang trí',
+    stock: 18,
+    price: 1250000,
+    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCIMqMv8w9BkZDZBpPQFAAJr4ppSvn8AZoLET3FBHbtrQUpBoePKxz2fJg9CeD4XROkEuW7q1hZQUMd6-z8tBSaQ15V5_mLDhbqUKvtMYMSfkY-OoT7mEmTF5PKZyib604cu6a5P1oPa01CPTlUhNIc2hisJDF8knLoIXbaZuSjVCd_J801kA6SZns3Hu410VJlDXaXrTEE9nRByYloULdP56qrdCUX751BVI0V3QaweclU79fp8V3mAl-6DEKQbq-ItjCTttZgzw',
+    description: 'Gối tựa lưng Sofa làm từ sợi cotton tự nhiên dệt thô mộc mạc và êm ái.'
+  }
+];
+
+export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, currentUser, onLogout }) => {
+  const [activeTab, setActiveTab] = useState<'overview' | 'inventory' | 'orders' | 'reports' | 'settings'>('inventory');
+  const [products, setProducts] = useState<ProductItem[]>(INITIAL_PRODUCTS);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('All Categories');
+
+  // Modals state
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<ProductItem | null>(null);
+
+  // Form states and field errors
+  const [formData, setFormData] = useState({
+    name: '',
+    sku: '',
+    category: 'Nội thất',
+    stock: 0,
+    price: 0,
+    image: '',
+    description: ''
+  });
+  const [formErrors, setFormErrors] = useState<{
+    name?: string;
+    sku?: string;
+    price?: string;
+    stock?: string;
+    image?: string;
+  }>({});
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // KPI Calculations
+  const totalProducts = products.length;
+  const lowStockCount = products.filter(p => p.stock > 0 && p.stock < 20).length;
+  const outOfStockCount = products.filter(p => p.stock === 0).length;
+  const totalValue = products.reduce((acc, curr) => acc + (curr.price * curr.stock), 0);
+
+  // Filtered Products
+  const filteredProducts = useMemo(() => {
+    return products.filter(p => {
+      const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            p.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            p.category.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const matchesCategory = categoryFilter === 'All Categories' || p.category === categoryFilter;
+
+      return matchesSearch && matchesCategory;
+    });
+  }, [products, searchQuery, categoryFilter]);
+
+  // Unique categories for filter
+  const categories = useMemo(() => {
+    return ['All Categories', ...Array.from(new Set(products.map(p => p.category)))];
+  }, [products]);
+
+  // Restock action
+  const handleRestock = (productId: string, amount: number = 50) => {
+    setProducts(prev => prev.map(p => {
+      if (p.id === productId) {
+        return { ...p, stock: p.stock + amount };
+      }
+      return p;
+    }));
+  };
+
+  // Form input validation logic
+  const validateField = (field: string, value: any) => {
+    let error = '';
+    switch (field) {
+      case 'name':
+        if (!value || value.trim().length < 3) {
+          error = 'Tên sản phẩm phải có tối thiểu 3 ký tự';
+        }
+        break;
+      case 'sku':
+        if (!value || !/^[A-Z0-9-]+$/.test(value)) {
+          error = 'Mã SKU phải in hoa và chỉ bao gồm chữ, số, dấu gạch ngang (Ví dụ: FUR-CH-123)';
+        }
+        break;
+      case 'price':
+        if (value === undefined || isNaN(Number(value)) || Number(value) <= 0) {
+          error = 'Giá bán phải lớn hơn 0 ₫';
+        }
+        break;
+      case 'stock':
+        if (value === undefined || isNaN(Number(value)) || Number(value) < 0 || !Number.isInteger(Number(value))) {
+          error = 'Số lượng tồn kho phải là số nguyên lớn hơn hoặc bằng 0';
+        }
+        break;
+      case 'image':
+        if (!value) {
+          error = 'Vui lòng chọn hình ảnh hoặc dán URL hình ảnh sản phẩm';
+        }
+        break;
+      default:
+        break;
+    }
+    setFormErrors(prev => ({ ...prev, [field]: error || undefined }));
+    return !error;
+  };
+
+  const validateForm = (): boolean => {
+    const isNameValid = validateField('name', formData.name);
+    const isSkuValid = validateField('sku', formData.sku);
+    const isPriceValid = validateField('price', formData.price);
+    const isStockValid = validateField('stock', formData.stock);
+    const isImageValid = validateField('image', formData.image);
+
+    return isNameValid && isSkuValid && isPriceValid && isStockValid && isImageValid;
+  };
+
+  const handleInputChange = (field: string, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    validateField(field, value);
+  };
+
+  // Handle local file selection and convert to ObjectURL
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const imageUrl = URL.createObjectURL(file);
+      handleInputChange('image', imageUrl);
+    }
+  };
+
+  const handleOpenAddModal = () => {
+    setFormData({
+      name: '',
+      sku: `FUR-NEW-${Date.now().toString().slice(-4)}`,
+      category: 'Nội thất',
+      stock: 10,
+      price: 2500000,
+      image: '',
+      description: ''
+    });
+    setFormErrors({});
+    setIsAddModalOpen(true);
+  };
+
+  const handleAddProduct = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+    
+    const newProduct: ProductItem = {
+      id: Date.now().toString(),
+      name: formData.name,
+      sku: formData.sku.toUpperCase(),
+      category: formData.category,
+      stock: Number(formData.stock),
+      price: Number(formData.price),
+      image: formData.image,
+      description: formData.description
+    };
+    setProducts(prev => [newProduct, ...prev]);
+    setIsAddModalOpen(false);
+  };
+
+  const handleOpenEditModal = (product: ProductItem) => {
+    setSelectedProduct(product);
+    setFormData({
+      name: product.name,
+      sku: product.sku,
+      category: product.category,
+      stock: product.stock,
+      price: product.price,
+      image: product.image,
+      description: product.description || ''
+    });
+    setFormErrors({});
+    setIsEditModalOpen(true);
+  };
+
+  const handleEditProduct = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+    if (!selectedProduct) return;
+
+    setProducts(prev => prev.map(p => {
+      if (p.id === selectedProduct.id) {
+        return {
+          ...p,
+          name: formData.name,
+          sku: formData.sku.toUpperCase(),
+          category: formData.category,
+          stock: Number(formData.stock),
+          price: Number(formData.price),
+          image: formData.image,
+          description: formData.description
+        };
+      }
+      return p;
+    }));
+    setIsEditModalOpen(false);
+    setSelectedProduct(null);
+  };
+
+  const handleDeleteProduct = (productId: string) => {
+    if (confirm('Bạn có chắc chắn muốn xoá sản phẩm nội thất này khỏi kho hàng?')) {
+      setProducts(prev => prev.filter(p => p.id !== productId));
+    }
+  };
+
+  const handleExportReport = () => {
+    const csvContent = "data:text/csv;charset=utf-8," 
+      + ["Tên sản phẩm,SKU,Danh mục,Số lượng,Giá bán"].join(",") + "\n"
+      + products.map(e => `"${e.name}","${e.sku}","${e.category}",${e.stock},${e.price}`).join("\n");
+    
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `LuxeCommerce_Furniture_Inventory_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  return (
+    <div className="flex bg-background text-on-background font-body-md antialiased min-h-screen relative">
+      {/* SideNavBar */}
+      <nav className="bg-primary-container h-screen w-64 fixed left-0 top-0 shadow-sm flex flex-col py-6 z-20">
+        <div className="px-6 mb-8 flex items-center space-x-3">
+          <div className="w-10 h-10 rounded-full overflow-hidden bg-surface-container-highest">
+            <div className="w-full h-full bg-gradient-to-tr from-secondary-container to-secondary flex items-center justify-center text-white font-bold">
+              {currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : 'M'}
+            </div>
+          </div>
+          <div>
+            <h2 className="font-headline-sm text-[16px] leading-[22px] font-bold text-white">Admin Panel</h2>
+            <p className="font-body-sm text-[12px] text-on-primary-container opacity-70">
+              {currentUser?.name || 'Manager Account'}
+            </p>
+          </div>
+        </div>
+        <ul className="space-y-1.5 flex-grow">
+          <li>
+            <button
+              onClick={() => setActiveTab('overview')}
+              className={`w-full flex items-center text-left pl-4 py-3 transition-colors cursor-pointer duration-200 ${
+                activeTab === 'overview'
+                  ? 'text-secondary-fixed font-bold border-l-4 border-secondary-fixed bg-on-primary-container/10'
+                  : 'text-on-primary-container opacity-70 hover:opacity-100 hover:bg-on-primary-container/5'
+              }`}
+            >
+              <span className="material-symbols-outlined mr-3" style={{ fontVariationSettings: "'FILL' 0" }}>dashboard</span>
+              <span className="font-label-md text-label-md">Overview</span>
+            </button>
+          </li>
+          <li>
+            <button
+              onClick={() => setActiveTab('inventory')}
+              className={`w-full flex items-center text-left pl-4 py-3 transition-colors cursor-pointer duration-200 ${
+                activeTab === 'inventory'
+                  ? 'text-secondary-fixed font-bold border-l-4 border-secondary-fixed bg-on-primary-container/10'
+                  : 'text-on-primary-container opacity-70 hover:opacity-100 hover:bg-on-primary-container/5'
+              }`}
+            >
+              <span className="material-symbols-outlined mr-3" style={{ fontVariationSettings: "'FILL' 1" }}>inventory_2</span>
+              <span className="font-label-md text-label-md">Inventory</span>
+            </button>
+          </li>
+          <li>
+            <button
+              onClick={() => setActiveTab('orders')}
+              className={`w-full flex items-center text-left pl-4 py-3 transition-colors cursor-pointer duration-200 ${
+                activeTab === 'orders'
+                  ? 'text-secondary-fixed font-bold border-l-4 border-secondary-fixed bg-on-primary-container/10'
+                  : 'text-on-primary-container opacity-70 hover:opacity-100 hover:bg-on-primary-container/5'
+              }`}
+            >
+              <span className="material-symbols-outlined mr-3" style={{ fontVariationSettings: "'FILL' 0" }}>shopping_cart</span>
+              <span className="font-label-md text-label-md">Orders</span>
+            </button>
+          </li>
+          <li>
+            <button
+              onClick={() => setActiveTab('reports')}
+              className={`w-full flex items-center text-left pl-4 py-3 transition-colors cursor-pointer duration-200 ${
+                activeTab === 'reports'
+                  ? 'text-secondary-fixed font-bold border-l-4 border-secondary-fixed bg-on-primary-container/10'
+                  : 'text-on-primary-container opacity-70 hover:opacity-100 hover:bg-on-primary-container/5'
+              }`}
+            >
+              <span className="material-symbols-outlined mr-3" style={{ fontVariationSettings: "'FILL' 0" }}>bar_chart</span>
+              <span className="font-label-md text-label-md">Reports</span>
+            </button>
+          </li>
+        </ul>
+        <div className="mt-auto space-y-1">
+          <button
+            onClick={() => onNavigate('home')}
+            className="w-full flex items-center text-left text-on-primary-container opacity-70 hover:opacity-100 pl-4 py-2.5 hover:bg-on-primary-container/5 transition-colors cursor-pointer"
+          >
+            <span className="material-symbols-outlined mr-3">store</span>
+            <span className="font-label-md text-label-md">Back to Shop</span>
+          </button>
+          {onLogout && (
+            <button
+              onClick={onLogout}
+              className="w-full flex items-center text-left text-error opacity-80 hover:opacity-100 pl-4 py-2.5 hover:bg-error-container/15 transition-colors cursor-pointer"
+            >
+              <span className="material-symbols-outlined mr-3">logout</span>
+              <span className="font-label-md text-label-md">Logout</span>
+            </button>
+          )}
+        </div>
+      </nav>
+
+      {/* Main content wrapper */}
+      <div className="flex-grow pl-64 min-h-screen flex flex-col">
+        {/* TopNavBar */}
+        <header className="bg-surface-container-lowest fixed top-0 right-0 w-[calc(100%-16rem)] h-16 border-b border-outline-variant z-10 flex justify-between items-center px-8">
+          <div className="flex items-center flex-1">
+            <h1 className="font-headline-sm text-headline-sm font-black text-primary mr-8 tracking-tight cursor-pointer" onClick={() => onNavigate('home')}>
+              StockMaster
+            </h1>
+            <div className="relative w-full max-w-md hidden md:block">
+              <span className="material-symbols-outlined absolute left-3 top-1/2 transform -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+              <input
+                className="w-full pl-10 pr-4 py-1.5 bg-surface-container-low border border-outline-variant rounded-xl text-sm focus:outline-none focus:border-secondary-container focus:ring-2 focus:ring-secondary-container/20 transition-all outline-none"
+                placeholder="Tìm kiếm nhanh sản phẩm, SKU..."
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="flex items-center space-x-4">
+            <button className="text-on-surface-variant hover:text-secondary-container transition-colors p-2 rounded-full hover:bg-surface-container-low relative">
+              <span className="material-symbols-outlined">notifications</span>
+              {lowStockCount > 0 && (
+                <span className="absolute top-1 right-1 bg-[#F57C00] h-2 w-2 rounded-full animate-ping"></span>
+              )}
+            </button>
+            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-primary-container text-white flex items-center justify-center font-bold text-xs select-none">
+              A
+            </div>
+          </div>
+        </header>
+
+        {/* Content Canvas */}
+        <main className="flex-grow pt-24 px-8 pb-12 max-w-[1200px] w-full mx-auto animate-fadeIn">
+          {activeTab === 'overview' && (
+            <div>
+              {/* Header & Quick Actions */}
+              <div className="flex justify-between items-end mb-8">
+                <div>
+                  <h1 className="font-headline-md text-headline-md text-primary mb-1">Manager Dashboard</h1>
+                  <p className="text-on-surface-variant font-body-sm text-body-sm">
+                    Tổng quan hiệu quả hoạt động kho hàng và các chỉ số tồn kho nội thất.
+                  </p>
+                </div>
+                <div className="flex space-x-3">
+                  <button
+                    onClick={handleExportReport}
+                    className="bg-surface-container-lowest text-primary border border-outline-variant px-4 py-2 rounded-xl font-label-md text-label-md hover:bg-surface-container-low transition-colors flex items-center gap-1.5 animate-fadeIn"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">download</span>
+                    Xuất báo cáo CSV
+                  </button>
+                </div>
+              </div>
+
+              {/* KPI Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div className="card-static rounded-2xl p-6 relative overflow-hidden group shadow-sm">
+                  <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <span className="material-symbols-outlined text-4xl text-primary font-bold">chair</span>
+                  </div>
+                  <h3 className="font-label-sm text-[12px] text-on-surface-variant uppercase tracking-wider mb-2 font-semibold">Tổng mẫu nội thất</h3>
+                  <p className="text-[36px] font-bold text-primary">{totalProducts}</p>
+                  <p className="font-body-sm text-[12px] text-surface-tint mt-2 flex items-center">
+                    <span className="material-symbols-outlined text-[16px] text-emerald-600 mr-1">trending_up</span>
+                    <span className="text-emerald-600 font-medium mr-1">+12%</span> so với tháng trước
+                  </p>
+                </div>
+
+                <div className="card-static rounded-2xl p-6 relative overflow-hidden group shadow-sm border-l-4 border-[#F57C00]">
+                  <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <span className="material-symbols-outlined text-4xl text-[#F57C00]">warning</span>
+                  </div>
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="font-label-sm text-[12px] text-on-surface-variant uppercase tracking-wider font-semibold">Sắp hết hàng (Dưới 20)</h3>
+                    {lowStockCount > 0 && (
+                      <span className="bg-[#FFF3E0] text-[#E65100] px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide">Cần chú ý</span>
+                    )}
+                  </div>
+                  <p className="text-[36px] font-bold text-primary">{lowStockCount}</p>
+                  <p className="font-body-sm text-[12px] text-surface-tint mt-2">Sản phẩm có mức báo động thấp</p>
+                </div>
+
+                <div className="card-static rounded-2xl p-6 relative overflow-hidden group shadow-sm">
+                  <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <span className="material-symbols-outlined text-4xl text-primary">account_balance_wallet</span>
+                  </div>
+                  <h3 className="font-label-sm text-[12px] text-on-surface-variant uppercase tracking-wider mb-2 font-semibold">Tổng giá trị tồn kho</h3>
+                  <p className="text-[36px] font-bold text-primary">
+                    {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalValue)}
+                  </p>
+                  <p className="font-body-sm text-[12px] text-surface-tint mt-2 flex items-center">
+                    <span className="material-symbols-outlined text-[16px] text-emerald-600 mr-1">trending_up</span>
+                    <span className="text-emerald-600 font-medium mr-1">+8.2%</span> so với tháng trước
+                  </p>
+                </div>
+
+                <div className="card-static rounded-2xl p-6 relative overflow-hidden group shadow-sm border-l-4 border-error">
+                  <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <span className="material-symbols-outlined text-4xl text-error">remove_shopping_cart</span>
+                  </div>
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="font-label-sm text-[12px] text-on-surface-variant uppercase tracking-wider font-semibold">Hết hàng tồn kho</h3>
+                  </div>
+                  <p className="text-[36px] font-bold text-primary">{outOfStockCount}</p>
+                  <p className="font-body-sm text-[12px] text-surface-tint mt-2">Cần tái nhập hàng ngay</p>
+                </div>
+              </div>
+
+              {/* Trends & Recent additions */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                {/* Chart representation */}
+                <div className="lg:col-span-2 card-static rounded-2xl p-6 h-96 flex flex-col shadow-sm">
+                  <div className="flex justify-between items-center mb-6">
+                    <h2 className="font-headline-sm text-headline-sm text-primary">Xu hướng xuất nhập nội thất</h2>
+                    <span className="text-xs text-on-surface-variant bg-surface-container-low px-3 py-1.5 rounded-lg border border-outline-variant/30">30 ngày qua</span>
+                  </div>
+                  <div className="flex-grow flex items-end space-x-2 relative mt-4">
+                    <div className="absolute left-0 top-0 bottom-0 flex flex-col justify-between text-xs text-outline w-8">
+                      <span>100</span><span>75</span><span>50</span><span>25</span><span>0</span>
+                    </div>
+                    <div className="ml-10 flex-grow h-full border-b border-l border-outline-variant/60 flex items-end space-x-4 px-4 pt-4">
+                      <div className="w-full bg-secondary-container/20 hover:bg-secondary-container/40 transition-all rounded-t-lg h-[40%] cursor-pointer" />
+                      <div className="w-full bg-secondary-container/30 hover:bg-secondary-container/50 transition-all rounded-t-lg h-[60%] cursor-pointer" />
+                      <div className="w-full bg-secondary-container/80 hover:bg-secondary-container transition-all rounded-t-lg h-[85%] cursor-pointer" />
+                      <div className="w-full bg-secondary-container/20 hover:bg-secondary-container/40 transition-all rounded-t-lg h-[50%] cursor-pointer" />
+                      <div className="w-full bg-secondary-container/40 hover:bg-secondary-container/65 transition-all rounded-t-lg h-[70%] cursor-pointer" />
+                      <div className="w-full bg-secondary-container/25 hover:bg-secondary-container/45 transition-all rounded-t-lg h-[45%] cursor-pointer" />
+                      <div className="w-full bg-secondary-container/90 hover:bg-secondary-container transition-all rounded-t-lg h-[90%] cursor-pointer" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Recently Added */}
+                <div className="card-static rounded-2xl p-6 h-96 flex flex-col shadow-sm">
+                  <h2 className="font-headline-sm text-headline-sm text-primary mb-4">Mẫu mới nhập kho</h2>
+                  <ul className="space-y-3 overflow-y-auto pr-1 flex-grow">
+                    {products.slice(0, 4).map(p => (
+                      <li key={p.id} className="flex items-center p-3 hover:bg-surface-container-low rounded-xl transition-all border border-transparent hover:border-outline-variant/30 cursor-pointer">
+                        <img src={p.image} alt={p.name} className="w-10 h-10 object-cover rounded-lg flex-shrink-0 mr-4" />
+                        <div className="flex-grow">
+                          <h4 className="font-label-md text-label-md text-primary font-semibold truncate max-w-[150px]">{p.name}</h4>
+                          <p className="font-label-sm text-[11px] text-surface-tint">SKU: {p.sku}</p>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-sm font-bold text-emerald-600">+{p.stock}</span>
+                          <p className="text-[10px] text-surface-tint">Hôm nay</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'inventory' && (
+            <div>
+              {/* Title & Quick Actions */}
+              <div className="flex justify-between items-end mb-8">
+                <div>
+                  <h1 className="font-headline-md text-headline-md text-primary mb-1">Quản Lý Tồn Kho Nội Thất</h1>
+                  <p className="text-on-surface-variant font-body-sm text-body-sm">
+                    Quản lý định mức, hình ảnh, mã sản phẩm và thực hiện các chức năng nhập xuất kho nhanh.
+                  </p>
+                </div>
+                <div className="flex space-x-3">
+                  <button
+                    onClick={handleExportReport}
+                    className="bg-surface-container-lowest text-primary border border-outline-variant/60 hover:border-outline px-4 py-2.5 rounded-xl font-label-md text-label-md hover:bg-surface-container-low transition-all flex items-center gap-1.5 shadow-sm"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">download</span>
+                    Xuất Báo Cáo
+                  </button>
+                  <button
+                    onClick={handleOpenAddModal}
+                    className="bg-secondary-container hover:bg-secondary-container/90 text-white px-4 py-2.5 rounded-xl font-label-md text-label-md transition-all flex items-center gap-1.5 shadow-sm active:scale-[0.98]"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">add</span>
+                    Thêm Sản Phẩm Mới
+                  </button>
+                </div>
+              </div>
+
+              {/* Table section */}
+              <div className="card-static rounded-2xl overflow-hidden shadow-sm">
+                <div className="p-5 border-b border-outline-variant/50 flex justify-between items-center bg-surface-bright/50">
+                  <h2 className="font-headline-sm text-headline-sm text-primary font-bold">Danh mục kho hàng</h2>
+                  <div className="flex space-x-3">
+                    {/* Category Filter */}
+                    <div className="relative">
+                      <span className="material-symbols-outlined absolute left-3 top-1/2 transform -translate-y-1/2 text-on-surface-variant text-[18px] pointer-events-none">filter_list</span>
+                      <select
+                        className="pl-9 pr-8 py-2 bg-surface-container-lowest border border-outline-variant/50 hover:border-outline rounded-xl text-sm focus:outline-none focus:border-secondary-container transition-all appearance-none cursor-pointer outline-none"
+                        value={categoryFilter}
+                        onChange={(e) => setCategoryFilter(e.target.value)}
+                      >
+                        {categories.map(cat => (
+                          <option key={cat} value={cat}>{cat === 'All Categories' ? 'Tất cả danh mục' : cat}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-surface-container-low/50 text-on-surface-variant border-b border-outline-variant/50">
+                        <th className="py-4 px-6 font-label-sm text-label-sm uppercase tracking-wider font-bold">Sản phẩm</th>
+                        <th className="py-4 px-6 font-label-sm text-label-sm uppercase tracking-wider font-bold">SKU</th>
+                        <th className="py-4 px-6 font-label-sm text-label-sm uppercase tracking-wider font-bold">Danh mục</th>
+                        <th className="py-4 px-6 font-label-sm text-label-sm uppercase tracking-wider font-bold">Mức tồn kho</th>
+                        <th className="py-4 px-6 font-label-sm text-label-sm uppercase tracking-wider font-bold text-right">Hành động</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-outline-variant/30 bg-surface-container-lowest">
+                      {filteredProducts.length > 0 ? (
+                        filteredProducts.map(p => (
+                          <tr key={p.id} className={`hover:bg-surface-bright/35 transition-colors group ${p.stock === 0 ? 'bg-red-500/5' : ''}`}>
+                            <td className="py-4 px-6">
+                              <div className="flex items-center">
+                                <img
+                                  src={p.image || 'https://via.placeholder.com/150'}
+                                  alt={p.name}
+                                  className="w-12 h-12 object-cover rounded-xl mr-4 flex-shrink-0 shadow-sm border border-outline-variant/30"
+                                />
+                                <div>
+                                  <p className="font-label-md text-label-md text-primary font-bold">{p.name}</p>
+                                  <p className="text-xs text-secondary font-bold">
+                                    {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p.price)}
+                                  </p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-4 px-6 text-sm text-surface-tint font-mono font-semibold">{p.sku}</td>
+                            <td className="py-4 px-6 text-sm text-surface-tint font-medium">{p.category}</td>
+                            <td className="py-4 px-6">
+                              {p.stock === 0 ? (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-300 border border-red-200 dark:border-red-900/50">
+                                  Hết hàng (0)
+                                </span>
+                              ) : p.stock < 20 ? (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#FFF3E0] text-[#E65100] border border-[#FFE0B2]">
+                                  Sắp hết (Low: {p.stock})
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#E8F5E9] text-[#1B5E20] border border-[#C8E6C9]">
+                                  Sẵn có ({p.stock})
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-4 px-6 text-right space-x-1">
+                              {p.stock < 20 ? (
+                                <button
+                                  onClick={() => handleRestock(p.id, 50)}
+                                  className="text-secondary-container hover:text-secondary font-bold text-xs bg-secondary-container/10 px-3 py-1.5 rounded-lg transition-colors inline-block"
+                                >
+                                  Nhập thêm
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handleRestock(p.id, 20)}
+                                  className="text-outline hover:text-primary font-bold text-xs hover:bg-surface-container px-3 py-1.5 rounded-lg transition-all inline-block"
+                                >
+                                  +20 Stock
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleOpenEditModal(p)}
+                                className="text-outline hover:text-primary transition-colors p-1.5 rounded-lg hover:bg-surface-container inline-block"
+                                title="Chỉnh sửa sản phẩm"
+                              >
+                                <span className="material-symbols-outlined text-[18px]">edit</span>
+                              </button>
+                              <button
+                                onClick={() => handleDeleteProduct(p.id)}
+                                className="text-outline hover:text-error transition-colors p-1.5 rounded-lg hover:bg-error-container/20 inline-block"
+                                title="Xóa sản phẩm"
+                              >
+                                <span className="material-symbols-outlined text-[18px]">delete</span>
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={5} className="py-12 text-center text-on-surface-variant opacity-60">
+                            <span className="material-symbols-outlined text-4xl block mb-2">search_off</span>
+                            Không tìm thấy sản phẩm nội thất nào.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="p-4 border-t border-outline-variant bg-surface-bright/30 flex justify-between items-center text-sm text-surface-tint">
+                  <span>Hiển thị 1 đến {filteredProducts.length} của {totalProducts} sản phẩm</span>
+                  <div className="flex space-x-1">
+                    <button className="px-3 py-1.5 border border-outline-variant/60 rounded-xl hover:bg-surface-container-low disabled:opacity-50 text-xs font-semibold" disabled>Trước</button>
+                    <button className="px-3 py-1.5 bg-secondary-container text-white rounded-xl text-xs font-bold shadow-sm">1</button>
+                    <button className="px-3 py-1.5 border border-outline-variant/60 rounded-xl hover:bg-surface-container-low text-xs font-semibold">Sau</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'orders' && (
+            <div className="text-center py-16 card-static rounded-2xl shadow-sm">
+              <span className="material-symbols-outlined text-[64px] text-outline/40 mb-3 block">receipt_long</span>
+              <h2 className="font-headline-sm text-headline-sm text-primary mb-1">Quản lý đơn đặt hàng</h2>
+              <p className="text-on-surface-variant font-body-md text-body-md max-w-md mx-auto mb-6">
+                Theo dõi quá trình vận chuyển các món đồ nội thất và đối soát doanh thu tự động.
+              </p>
+              <button onClick={() => setActiveTab('inventory')} className="px-5 py-2.5 bg-primary text-white font-label-md text-label-md rounded-xl shadow-md hover:bg-primary/95 transition-all">
+                Quay lại quản lý kho
+              </button>
+            </div>
+          )}
+
+          {activeTab === 'reports' && (
+            <div className="text-center py-16 card-static rounded-2xl shadow-sm">
+              <span className="material-symbols-outlined text-[64px] text-outline/40 mb-3 block">insights</span>
+              <h2 className="font-headline-sm text-headline-sm text-primary mb-1">Báo cáo & Phân tích chuyên sâu</h2>
+              <p className="text-on-surface-variant font-body-md text-body-md max-w-md mx-auto mb-6">
+                Xu hướng mua sắm nội thất, phân loại sản phẩm bán chạy nhất và tỷ lệ xoay vòng tồn kho.
+              </p>
+              <button onClick={handleExportReport} className="px-5 py-2.5 bg-secondary-container text-white font-label-md text-label-md rounded-xl shadow-md hover:opacity-90 transition-all flex items-center gap-1.5 mx-auto">
+                <span className="material-symbols-outlined">download</span> Xuất toàn bộ báo cáo CSV
+              </button>
+            </div>
+          )}
+
+          {activeTab === 'settings' && (
+            <div className="card-static rounded-2xl p-6 shadow-sm max-w-2xl mx-auto">
+              <h2 className="font-headline-sm text-headline-sm text-primary font-bold mb-4 border-b pb-3">Cấu hình hệ thống StockMaster</h2>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center py-2 border-b border-outline-variant/30">
+                  <div>
+                    <h4 className="font-label-md text-label-md text-primary font-semibold">Cảnh báo tồn kho tối thiểu</h4>
+                    <p className="text-xs text-on-surface-variant">Thông báo khi sản phẩm nội thất xuống dưới 20 đơn vị.</p>
+                  </div>
+                  <input type="checkbox" defaultChecked className="w-5 h-5 text-secondary-container border-outline-variant focus:ring-secondary-container/20 rounded cursor-pointer" />
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-outline-variant/30">
+                  <div>
+                    <h4 className="font-label-md text-label-md text-primary font-semibold">Ẩn sản phẩm hết hàng</h4>
+                    <p className="text-xs text-on-surface-variant">Tự động ẩn sản phẩm trên website LuxeCommerce khi tồn kho bằng 0.</p>
+                  </div>
+                  <input type="checkbox" className="w-5 h-5 text-secondary-container border-outline-variant focus:ring-secondary-container/20 rounded cursor-pointer" />
+                </div>
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
+
+      {/* Add Product Modal */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-surface-container-lowest rounded-2xl w-full max-w-lg shadow-[0px_20px_50px_rgba(0,0,0,0.3)] border border-outline-variant/30 overflow-hidden animate-fadeIn">
+            <div className="px-6 py-4 bg-surface-bright border-b border-outline-variant/40 flex justify-between items-center">
+              <h3 className="font-headline-sm text-headline-sm text-primary font-bold">Thêm sản phẩm nội thất mới</h3>
+              <button onClick={() => setIsAddModalOpen(false)} className="text-outline hover:text-primary rounded-full hover:bg-surface-container p-1 flex items-center justify-center">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <form onSubmit={handleAddProduct} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+              
+              {/* Product Name */}
+              <div>
+                <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Tên sản phẩm nội thất *</label>
+                <input
+                  required
+                  type="text"
+                  placeholder="Ví dụ: Ghế tựa thư giãn Lusso"
+                  className={`w-full px-3 py-2 bg-surface-container-low border rounded-xl outline-none text-sm transition-all ${
+                    formErrors.name ? 'border-error focus:ring-error' : 'border-outline-variant/60 focus:border-secondary-container'
+                  }`}
+                  value={formData.name}
+                  onChange={(e) => handleInputChange('name', e.target.value)}
+                />
+                {formErrors.name && <p className="text-xs text-error mt-1">{formErrors.name}</p>}
+              </div>
+
+              {/* SKU & Category Row */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Mã định danh SKU *</label>
+                  <input
+                    required
+                    type="text"
+                    placeholder="Ví dụ: FUR-LU-001"
+                    className={`w-full px-3 py-2 bg-surface-container-low border rounded-xl outline-none text-sm transition-all ${
+                      formErrors.sku ? 'border-error focus:ring-error' : 'border-outline-variant/60 focus:border-secondary-container'
+                    }`}
+                    value={formData.sku}
+                    onChange={(e) => handleInputChange('sku', e.target.value)}
+                  />
+                  {formErrors.sku && <p className="text-xs text-error mt-1">{formErrors.sku}</p>}
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Danh mục</label>
+                  <select
+                    className="w-full px-3 py-2 bg-surface-container-low border border-outline-variant/60 focus:border-secondary-container rounded-xl outline-none text-sm transition-all cursor-pointer"
+                    value={formData.category}
+                    onChange={(e) => handleInputChange('category', e.target.value)}
+                  >
+                    <option value="Nội thất">Nội thất</option>
+                    <option value="Đồ trang trí">Đồ trang trí</option>
+                    <option value="Đèn chiếu sáng">Đèn chiếu sáng</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Price & Stock Row */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Giá bán (VND ₫) *</label>
+                  <input
+                    required
+                    type="number"
+                    min="1"
+                    placeholder="8500000"
+                    className={`w-full px-3 py-2 bg-surface-container-low border rounded-xl outline-none text-sm transition-all ${
+                      formErrors.price ? 'border-error focus:ring-error' : 'border-outline-variant/60 focus:border-secondary-container'
+                    }`}
+                    value={formData.price}
+                    onChange={(e) => handleInputChange('price', e.target.value ? Number(e.target.value) : '')}
+                  />
+                  {formErrors.price && <p className="text-xs text-error mt-1">{formErrors.price}</p>}
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Số lượng nhập kho *</label>
+                  <input
+                    required
+                    type="number"
+                    min="0"
+                    placeholder="45"
+                    className={`w-full px-3 py-2 bg-surface-container-low border rounded-xl outline-none text-sm transition-all ${
+                      formErrors.stock ? 'border-error focus:ring-error' : 'border-outline-variant/60 focus:border-secondary-container'
+                    }`}
+                    value={formData.stock}
+                    onChange={(e) => handleInputChange('stock', e.target.value ? Number(e.target.value) : '')}
+                  />
+                  {formErrors.stock && <p className="text-xs text-error mt-1">{formErrors.stock}</p>}
+                </div>
+              </div>
+
+              {/* Product Image Input */}
+              <div>
+                <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Hình ảnh sản phẩm *</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Dán link hình ảnh (URL) hoặc chọn file..."
+                    className={`flex-grow px-3 py-2 bg-surface-container-low border rounded-xl outline-none text-sm transition-all ${
+                      formErrors.image ? 'border-error focus:ring-error' : 'border-outline-variant/60 focus:border-secondary-container'
+                    }`}
+                    value={formData.image}
+                    onChange={(e) => handleInputChange('image', e.target.value)}
+                  />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    ref={fileInputRef}
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="bg-surface-container border border-outline-variant/60 hover:bg-surface-container-high px-4 rounded-xl text-xs font-semibold flex items-center gap-1 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">upload_file</span>
+                    Tải ảnh
+                  </button>
+                </div>
+                {formErrors.image && <p className="text-xs text-error mt-1">{formErrors.image}</p>}
+
+                {/* Image Preview Box */}
+                {formData.image && (
+                  <div className="mt-3 p-2 bg-surface-container-low rounded-xl border border-outline-variant/40 flex items-center justify-center relative group max-w-[200px] h-[120px] overflow-hidden mx-auto">
+                    <img src={formData.image} alt="Preview" className="max-h-full max-w-full object-contain rounded-lg shadow-sm" />
+                    <button
+                      type="button"
+                      onClick={() => handleInputChange('image', '')}
+                      className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black"
+                    >
+                      <span className="material-symbols-outlined text-xs">close</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Product Description */}
+              <div>
+                <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Mô tả chi tiết</label>
+                <textarea
+                  rows={2}
+                  placeholder="Mô tả thông số, kích thước, chất liệu..."
+                  className="w-full px-3 py-2 bg-surface-container-low border border-outline-variant/60 focus:border-secondary-container rounded-xl outline-none text-sm transition-all resize-none"
+                  value={formData.description}
+                  onChange={(e) => handleInputChange('description', e.target.value)}
+                />
+              </div>
+
+              {/* Submit / Cancel Buttons */}
+              <div className="pt-3 border-t border-outline-variant/40 flex justify-end space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="px-4 py-2 border border-outline-variant text-primary rounded-xl font-label-md text-label-md hover:bg-surface-container-low transition-colors"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-secondary-container hover:bg-secondary-container/95 text-white rounded-xl font-label-md text-label-md shadow-sm transition-colors"
+                >
+                  Tạo sản phẩm
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Product Modal */}
+      {isEditModalOpen && selectedProduct && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-surface-container-lowest rounded-2xl w-full max-w-lg shadow-[0px_20px_50px_rgba(0,0,0,0.3)] border border-outline-variant/30 overflow-hidden animate-fadeIn">
+            <div className="px-6 py-4 bg-surface-bright border-b border-outline-variant/40 flex justify-between items-center">
+              <h3 className="font-headline-sm text-headline-sm text-primary font-bold">Chỉnh sửa sản phẩm</h3>
+              <button onClick={() => { setIsEditModalOpen(false); setSelectedProduct(null); }} className="text-outline hover:text-primary rounded-full hover:bg-surface-container p-1 flex items-center justify-center">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <form onSubmit={handleEditProduct} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+              
+              {/* Product Name */}
+              <div>
+                <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Tên sản phẩm *</label>
+                <input
+                  required
+                  type="text"
+                  className={`w-full px-3 py-2 bg-surface-container-low border rounded-xl outline-none text-sm transition-all ${
+                    formErrors.name ? 'border-error focus:ring-error' : 'border-outline-variant/60 focus:border-secondary-container'
+                  }`}
+                  value={formData.name}
+                  onChange={(e) => handleInputChange('name', e.target.value)}
+                />
+                {formErrors.name && <p className="text-xs text-error mt-1">{formErrors.name}</p>}
+              </div>
+
+              {/* SKU & Category Row */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Mã định danh SKU *</label>
+                  <input
+                    required
+                    type="text"
+                    className={`w-full px-3 py-2 bg-surface-container-low border rounded-xl outline-none text-sm transition-all ${
+                      formErrors.sku ? 'border-error focus:ring-error' : 'border-outline-variant/60 focus:border-secondary-container'
+                    }`}
+                    value={formData.sku}
+                    onChange={(e) => handleInputChange('sku', e.target.value)}
+                  />
+                  {formErrors.sku && <p className="text-xs text-error mt-1">{formErrors.sku}</p>}
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Danh mục</label>
+                  <select
+                    className="w-full px-3 py-2 bg-surface-container-low border border-outline-variant/60 focus:border-secondary-container rounded-xl outline-none text-sm transition-all cursor-pointer"
+                    value={formData.category}
+                    onChange={(e) => handleInputChange('category', e.target.value)}
+                  >
+                    <option value="Nội thất">Nội thất</option>
+                    <option value="Đồ trang trí">Đồ trang trí</option>
+                    <option value="Đèn chiếu sáng">Đèn chiếu sáng</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Price & Stock Row */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Giá bán (VND ₫) *</label>
+                  <input
+                    required
+                    type="number"
+                    min="1"
+                    className={`w-full px-3 py-2 bg-surface-container-low border rounded-xl outline-none text-sm transition-all ${
+                      formErrors.price ? 'border-error focus:ring-error' : 'border-outline-variant/60 focus:border-secondary-container'
+                    }`}
+                    value={formData.price}
+                    onChange={(e) => handleInputChange('price', e.target.value ? Number(e.target.value) : '')}
+                  />
+                  {formErrors.price && <p className="text-xs text-error mt-1">{formErrors.price}</p>}
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Số lượng tồn kho *</label>
+                  <input
+                    required
+                    type="number"
+                    min="0"
+                    className={`w-full px-3 py-2 bg-surface-container-low border rounded-xl outline-none text-sm transition-all ${
+                      formErrors.stock ? 'border-error focus:ring-error' : 'border-outline-variant/60 focus:border-secondary-container'
+                    }`}
+                    value={formData.stock}
+                    onChange={(e) => handleInputChange('stock', e.target.value ? Number(e.target.value) : '')}
+                  />
+                  {formErrors.stock && <p className="text-xs text-error mt-1">{formErrors.stock}</p>}
+                </div>
+              </div>
+
+              {/* Product Image Input */}
+              <div>
+                <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Hình ảnh sản phẩm *</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Dán link hình ảnh (URL) hoặc chọn file..."
+                    className={`flex-grow px-3 py-2 bg-surface-container-low border rounded-xl outline-none text-sm transition-all ${
+                      formErrors.image ? 'border-error focus:ring-error' : 'border-outline-variant/60 focus:border-secondary-container'
+                    }`}
+                    value={formData.image}
+                    onChange={(e) => handleInputChange('image', e.target.value)}
+                  />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    ref={fileInputRef}
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="bg-surface-container border border-outline-variant/60 hover:bg-surface-container-high px-4 rounded-xl text-xs font-semibold flex items-center gap-1 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">upload_file</span>
+                    Tải ảnh
+                  </button>
+                </div>
+                {formErrors.image && <p className="text-xs text-error mt-1">{formErrors.image}</p>}
+
+                {/* Image Preview Box */}
+                {formData.image && (
+                  <div className="mt-3 p-2 bg-surface-container-low rounded-xl border border-outline-variant/40 flex items-center justify-center relative group max-w-[200px] h-[120px] overflow-hidden mx-auto">
+                    <img src={formData.image} alt="Preview" className="max-h-full max-w-full object-contain rounded-lg shadow-sm" />
+                    <button
+                      type="button"
+                      onClick={() => handleInputChange('image', '')}
+                      className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black"
+                    >
+                      <span className="material-symbols-outlined text-xs">close</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Product Description */}
+              <div>
+                <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Mô tả chi tiết</label>
+                <textarea
+                  rows={2}
+                  className="w-full px-3 py-2 bg-surface-container-low border border-outline-variant/60 focus:border-secondary-container rounded-xl outline-none text-sm transition-all resize-none"
+                  value={formData.description}
+                  onChange={(e) => handleInputChange('description', e.target.value)}
+                />
+              </div>
+
+              {/* Submit / Cancel Buttons */}
+              <div className="pt-3 border-t border-outline-variant/40 flex justify-end space-x-2">
+                <button
+                  type="button"
+                  onClick={() => { setIsEditModalOpen(false); setSelectedProduct(null); }}
+                  className="px-4 py-2 border border-outline-variant text-primary rounded-xl font-label-md text-label-md hover:bg-surface-container-low transition-colors"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-secondary-container hover:bg-secondary-container/95 text-white rounded-xl font-label-md text-label-md shadow-sm transition-colors"
+                >
+                  Lưu thay đổi
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};

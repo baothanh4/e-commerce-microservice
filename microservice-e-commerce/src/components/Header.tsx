@@ -9,8 +9,8 @@ interface HeaderProps {
   isDarkMode: boolean;
   toggleDarkMode: () => void;
   wishlistCount: number;
-  onNavigate: (view: 'home' | 'products' | 'detail' | 'login' | 'register' | 'profile', sortBy?: string) => void;
-  currentView: 'home' | 'products' | 'detail' | 'login' | 'register' | 'profile';
+  onNavigate: (view: 'home' | 'products' | 'detail' | 'login' | 'register' | 'profile' | 'dashboard', sortBy?: string) => void;
+  currentView: 'home' | 'products' | 'detail' | 'login' | 'register' | 'profile' | 'dashboard';
   currentSortBy: string;
   currentUser?: { name: string; email: string; role: string } | null;
   onLogout?: () => void;
@@ -34,7 +34,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="bg-surface-container-lowest dark:bg-tertiary-container w-full sticky top-0 z-50 shadow-sm border-b border-outline-variant/30 transition-all duration-300">
-      <div className="flex items-center justify-between px-margin-mobile md:px-margin-desktop py-4 max-w-container-max mx-auto">
+      <div className="flex items-center justify-between w-full px-margin-mobile md:px-margin-desktop py-4">
         {/* Brand */}
         <button 
           onClick={() => onNavigate('home')}
@@ -81,6 +81,16 @@ export const Header: React.FC<HeaderProps> = ({
           >
             Brands
           </button>
+          {currentUser && currentUser.role === 'ADMIN' && (
+            <button 
+              onClick={() => onNavigate('dashboard')}
+              className={`transition-colors font-body-md text-body-md focus:outline-none ${
+                currentView === 'dashboard' ? 'text-secondary dark:text-secondary-fixed font-bold border-b-2 border-secondary dark:border-secondary-fixed pb-1' : 'text-on-surface-variant dark:text-tertiary-fixed-dim hover:text-secondary'
+              }`}
+            >
+              Dashboard
+            </button>
+          )}
         </nav>
 
         {/* Actions (Search & Icons) */}
@@ -229,10 +239,20 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
             <button 
               onClick={() => { onNavigate('products'); setIsMobileMenuOpen(false); }}
-              className="text-on-surface-variant dark:text-tertiary-fixed-dim hover:text-secondary py-2 font-body-md text-body-md text-left focus:outline-none"
+              className="text-on-surface-variant dark:text-tertiary-fixed-dim hover:text-secondary py-2 font-body-md text-body-md border-b border-outline-variant/10 text-left focus:outline-none"
             >
               Brands
             </button>
+            {currentUser && currentUser.role === 'ADMIN' && (
+              <button 
+                onClick={() => { onNavigate('dashboard'); setIsMobileMenuOpen(false); }}
+                className={`py-2 font-body-md text-body-md border-b border-outline-variant/10 text-left focus:outline-none ${
+                  currentView === 'dashboard' ? 'text-secondary dark:text-secondary-fixed font-bold' : 'text-on-surface-variant dark:text-tertiary-fixed-dim'
+                }`}
+              >
+                Dashboard
+              </button>
+            )}
             {currentUser ? (
               <div className="flex flex-col gap-2 mt-2 py-2 px-4 bg-surface-container/50 dark:bg-surface-container/10 rounded-lg">
                 <span className="font-body-md text-body-md text-on-surface dark:text-inverse-on-surface select-none">

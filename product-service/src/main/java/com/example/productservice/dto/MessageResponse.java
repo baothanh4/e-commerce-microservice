@@ -1,4 +1,4 @@
-package com.example.authservice.dto.response;
+package com.example.productservice.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -10,6 +10,5 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 public class MessageResponse {
-
     private String message;
 }

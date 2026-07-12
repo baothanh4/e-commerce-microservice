@@ -18,3 +18,16 @@ eureka:
   client:
     service-url:
       defaultZone: http://localhost:8761/eureka/
+
+jwt:
+  secret: Y2hhbmdlLXRoaXMtdG8teW91ci1vd24tc2VjcmV0LWtleS1pbi1wcm9kdWN0aW9uLWVudmlyb25tZW50
+  expiration: 86400000
+
+aws:
+  s3:
+    bucket: ${AWS_BUCKET_NAME}
+    folder: ${AWS_FOLDER}
+    region: ${AWS_REGION}
+    access-key: ${AWS_ACCESS_KEY}
+    secret-key: ${AWS_SECRET_KEY}
+

@@ -1,8 +1,8 @@
 package com.example.authservice.service;
 
-import com.example.authservice.dto.AuthResponse;
-import com.example.authservice.dto.LoginRequest;
-import com.example.authservice.dto.RegisterRequest;
+import com.example.authservice.dto.response.AuthResponse;
+import com.example.authservice.dto.request.LoginRequest;
+import com.example.authservice.dto.request.RegisterRequest;
 import com.example.authservice.entity.Gender;
 import com.example.authservice.entity.Role;
 import com.example.authservice.entity.User;
@@ -20,10 +20,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 
-import com.example.authservice.dto.UserProfileDto;
-import com.example.authservice.dto.AddressDto;
-import com.example.authservice.dto.ProvinceDto;
-import com.example.authservice.dto.WardDto;
+import com.example.authservice.dto.response.UserProfileDto;
+import com.example.authservice.dto.response.AddressDto;
+import com.example.authservice.dto.response.ProvinceDto;
+import com.example.authservice.dto.response.WardDto;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import com.example.authservice.client.UserClient;
 

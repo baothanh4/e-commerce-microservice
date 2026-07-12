@@ -1,4 +1,4 @@
-package com.example.authservice.dto;
+package com.example.authservice.dto.response;
 
 import lombok.*;
 import java.util.List;

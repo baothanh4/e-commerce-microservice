@@ -1,9 +1,9 @@
 package com.example.authservice.controller;
 
-import com.example.authservice.dto.AuthResponse;
-import com.example.authservice.dto.LoginRequest;
-import com.example.authservice.dto.MessageResponse;
-import com.example.authservice.dto.RegisterRequest;
+import com.example.authservice.dto.response.AuthResponse;
+import com.example.authservice.dto.request.LoginRequest;
+import com.example.authservice.dto.response.MessageResponse;
+import com.example.authservice.dto.request.RegisterRequest;
 import com.example.authservice.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -11,7 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import com.example.authservice.dto.UserProfileDto;
+import com.example.authservice.dto.response.UserProfileDto;
 import org.springframework.security.core.Authentication;
 
 @CrossOrigin(origins = "*", allowedHeaders = "*")

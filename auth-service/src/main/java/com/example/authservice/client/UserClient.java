@@ -1,6 +1,6 @@
 package com.example.authservice.client;
 
-import com.example.authservice.dto.UserProfileDto;
+import com.example.authservice.dto.response.UserProfileDto;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;

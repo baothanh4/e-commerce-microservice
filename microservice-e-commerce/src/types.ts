@@ -26,6 +26,8 @@ export interface Product {
   colors?: ColorOption[];
   specs?: SpecItem[];
   highlights?: string[];
+  sku?: string;
+  stock?: number;
 }
 
 export interface CartItem {

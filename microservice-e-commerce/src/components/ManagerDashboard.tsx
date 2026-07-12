@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 
 interface ProductItem {
   id: string;
@@ -13,7 +13,7 @@ interface ProductItem {
 
 interface ManagerDashboardProps {
   onNavigate: (view: 'home' | 'products' | 'detail' | 'login' | 'register' | 'profile' | 'dashboard') => void;
-  currentUser?: { name: string; email: string; role: string } | null;
+  currentUser?: { name: string; email: string; token: string; role: string } | null;
   onLogout?: () => void;
 }
 
@@ -93,13 +93,44 @@ const INITIAL_PRODUCTS: ProductItem[] = [
 export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, currentUser, onLogout }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'inventory' | 'orders' | 'reports' | 'settings'>('inventory');
   const [products, setProducts] = useState<ProductItem[]>(INITIAL_PRODUCTS);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All Categories');
+
+  useEffect(() => {
+    const fetchDashboardProducts = async () => {
+      try {
+        const response = await fetch('http://localhost:8080/products');
+        if (response.ok) {
+          const data = await response.json();
+          const mapped: ProductItem[] = data.map((p: any) => ({
+            id: String(p.id),
+            name: p.name,
+            sku: p.sku,
+            category: p.category,
+            stock: p.stock,
+            price: p.price,
+            image: p.image || '',
+            description: p.description || ''
+          }));
+          setProducts(mapped);
+        }
+      } catch (error) {
+        console.error("Lỗi khi fetch sản phẩm cho dashboard:", error);
+      }
+    };
+    fetchDashboardProducts();
+  }, []);
 
   // Modals state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<ProductItem | null>(null);
+
+  // Restock modal state
+  const [restockTarget, setRestockTarget] = useState<ProductItem | null>(null);
+  const [restockAmount, setRestockAmount] = useState<number>(10);
+  const [isRestockModalOpen, setIsRestockModalOpen] = useState(false);
 
   // Form states and field errors
   const [formData, setFormData] = useState({
@@ -146,13 +177,42 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
   }, [products]);
 
   // Restock action
-  const handleRestock = (productId: string, amount: number = 50) => {
-    setProducts(prev => prev.map(p => {
-      if (p.id === productId) {
-        return { ...p, stock: p.stock + amount };
+  const openRestockModal = (product: ProductItem) => {
+    setRestockTarget(product);
+    setRestockAmount(10);
+    setIsRestockModalOpen(true);
+  };
+
+  const handleConfirmRestock = async () => {
+    if (!restockTarget || restockAmount <= 0) return;
+    const token = currentUser?.token;
+    const newStock = restockTarget.stock + restockAmount;
+
+    try {
+      if (token) {
+        const response = await fetch(`http://localhost:8080/products/${restockTarget.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({
+            name: restockTarget.name,
+            sku: restockTarget.sku,
+            category: restockTarget.category,
+            stock: newStock,
+            price: restockTarget.price,
+            image: restockTarget.image,
+            description: restockTarget.description || ''
+          })
+        });
+        if (!response.ok) throw new Error(await response.text());
       }
-      return p;
-    }));
+      setProducts(prev => prev.map(p =>
+        p.id === restockTarget.id ? { ...p, stock: newStock } : p
+      ));
+      setIsRestockModalOpen(false);
+      setRestockTarget(null);
+    } catch (err: any) {
+      alert('Lỗi khi nhập thêm hàng: ' + err.message);
+    }
   };
 
   // Form input validation logic
@@ -164,10 +224,12 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
           error = 'Tên sản phẩm phải có tối thiểu 3 ký tự';
         }
         break;
-      case 'sku':
-        if (!value || !/^[A-Z0-9-]+$/.test(value)) {
-          error = 'Mã SKU phải in hoa và chỉ bao gồm chữ, số, dấu gạch ngang (Ví dụ: FUR-CH-123)';
+      case 'sku': {
+        const upperSku = typeof value === 'string' ? value.toUpperCase() : value;
+        if (!upperSku || !/^[A-Z0-9-]+$/.test(upperSku)) {
+          error = 'Mã SKU chỉ được gồm chữ, số, dấu gạch ngang (Ví dụ: FUR-CH-123)';
         }
+      }
         break;
       case 'price':
         if (value === undefined || isNaN(Number(value)) || Number(value) <= 0) {
@@ -202,20 +264,46 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
   };
 
   const handleInputChange = (field: string, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    validateField(field, value);
+    const processedValue = field === 'sku' && typeof value === 'string' ? value.toUpperCase() : value;
+    setFormData(prev => ({ ...prev, [field]: processedValue }));
+    validateField(field, processedValue);
   };
 
   // Handle local file selection and convert to ObjectURL
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setSelectedFile(file);
       const imageUrl = URL.createObjectURL(file);
       handleInputChange('image', imageUrl);
     }
   };
 
+  const uploadImageIfSelected = async (file: File): Promise<string> => {
+    const token = currentUser?.token;
+    if (!token) throw new Error("Vui lòng đăng nhập với quyền admin");
+
+    const uploadFormData = new FormData();
+    uploadFormData.append("file", file);
+
+    const response = await fetch("http://localhost:8080/products/upload", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${token}`
+      },
+      body: uploadFormData
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(errText || "Lỗi khi upload ảnh");
+    }
+
+    return await response.text();
+  };
+
   const handleOpenAddModal = () => {
+    setSelectedFile(null);
     setFormData({
       name: '',
       sku: `FUR-NEW-${Date.now().toString().slice(-4)}`,
@@ -229,26 +317,66 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
     setIsAddModalOpen(true);
   };
 
-  const handleAddProduct = (e: React.FormEvent) => {
+  const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
     
-    const newProduct: ProductItem = {
-      id: Date.now().toString(),
-      name: formData.name,
-      sku: formData.sku.toUpperCase(),
-      category: formData.category,
-      stock: Number(formData.stock),
-      price: Number(formData.price),
-      image: formData.image,
-      description: formData.description
-    };
-    setProducts(prev => [newProduct, ...prev]);
-    setIsAddModalOpen(false);
+    try {
+      let finalImageUrl = formData.image;
+      if (selectedFile) {
+        finalImageUrl = await uploadImageIfSelected(selectedFile);
+      }
+
+      const token = currentUser?.token;
+      if (!token) {
+        alert("Vui lòng đăng nhập với quyền admin");
+        return;
+      }
+
+      const response = await fetch("http://localhost:8080/products", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          sku: formData.sku.toUpperCase(),
+          category: formData.category,
+          stock: Number(formData.stock),
+          price: Number(formData.price),
+          image: finalImageUrl,
+          description: formData.description
+        })
+      });
+
+      if (response.ok) {
+        const savedProd = await response.json();
+        const newProduct: ProductItem = {
+          id: String(savedProd.id),
+          name: savedProd.name,
+          sku: savedProd.sku,
+          category: savedProd.category,
+          stock: savedProd.stock,
+          price: savedProd.price,
+          image: savedProd.image,
+          description: savedProd.description
+        };
+        setProducts(prev => [newProduct, ...prev]);
+        setIsAddModalOpen(false);
+        setSelectedFile(null);
+      } else {
+        const errMsg = await response.text();
+        alert("Thêm sản phẩm thất bại: " + errMsg);
+      }
+    } catch (err: any) {
+      alert("Lỗi: " + err.message);
+    }
   };
 
   const handleOpenEditModal = (product: ProductItem) => {
     setSelectedProduct(product);
+    setSelectedFile(null);
     setFormData({
       name: product.name,
       sku: product.sku,
@@ -262,33 +390,94 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
     setIsEditModalOpen(true);
   };
 
-  const handleEditProduct = (e: React.FormEvent) => {
+  const handleEditProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
     if (!selectedProduct) return;
 
-    setProducts(prev => prev.map(p => {
-      if (p.id === selectedProduct.id) {
-        return {
-          ...p,
+    try {
+      let finalImageUrl = formData.image;
+      if (selectedFile && formData.image.startsWith("blob:")) {
+        finalImageUrl = await uploadImageIfSelected(selectedFile);
+      }
+
+      const token = currentUser?.token;
+      if (!token) {
+        alert("Vui lòng đăng nhập với quyền admin");
+        return;
+      }
+
+      const response = await fetch(`http://localhost:8080/products/${selectedProduct.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
           name: formData.name,
           sku: formData.sku.toUpperCase(),
           category: formData.category,
           stock: Number(formData.stock),
           price: Number(formData.price),
-          image: formData.image,
+          image: finalImageUrl,
           description: formData.description
-        };
+        })
+      });
+
+      if (response.ok) {
+        const updatedProd = await response.json();
+        setProducts(prev => prev.map(p => {
+          if (p.id === String(updatedProd.id)) {
+            return {
+              id: String(updatedProd.id),
+              name: updatedProd.name,
+              sku: updatedProd.sku,
+              category: updatedProd.category,
+              stock: updatedProd.stock,
+              price: updatedProd.price,
+              image: updatedProd.image,
+              description: updatedProd.description
+            };
+          }
+          return p;
+        }));
+        setIsEditModalOpen(false);
+        setSelectedProduct(null);
+        setSelectedFile(null);
+      } else {
+        const errMsg = await response.text();
+        alert("Cập nhật sản phẩm thất bại: " + errMsg);
       }
-      return p;
-    }));
-    setIsEditModalOpen(false);
-    setSelectedProduct(null);
+    } catch (err: any) {
+      alert("Lỗi: " + err.message);
+    }
   };
 
-  const handleDeleteProduct = (productId: string) => {
+  const handleDeleteProduct = async (productId: string) => {
     if (confirm('Bạn có chắc chắn muốn xoá sản phẩm nội thất này khỏi kho hàng?')) {
-      setProducts(prev => prev.filter(p => p.id !== productId));
+      try {
+        const token = currentUser?.token;
+        if (!token) {
+          alert("Vui lòng đăng nhập với quyền admin");
+          return;
+        }
+
+        const response = await fetch(`http://localhost:8080/products/${productId}`, {
+          method: "DELETE",
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          setProducts(prev => prev.filter(p => p.id !== productId));
+        } else {
+          const errMsg = await response.text();
+          alert("Xoá sản phẩm thất bại: " + errMsg);
+        }
+      } catch (err: any) {
+        alert("Lỗi: " + err.message);
+      }
     }
   };
 
@@ -650,21 +839,16 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
                               )}
                             </td>
                             <td className="py-4 px-6 text-right space-x-1">
-                              {p.stock < 20 ? (
-                                <button
-                                  onClick={() => handleRestock(p.id, 50)}
-                                  className="text-secondary-container hover:text-secondary font-bold text-xs bg-secondary-container/10 px-3 py-1.5 rounded-lg transition-colors inline-block"
-                                >
-                                  Nhập thêm
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={() => handleRestock(p.id, 20)}
-                                  className="text-outline hover:text-primary font-bold text-xs hover:bg-surface-container px-3 py-1.5 rounded-lg transition-all inline-block"
-                                >
-                                  +20 Stock
-                                </button>
-                              )}
+                              <button
+                                onClick={() => openRestockModal(p)}
+                                className={`font-bold text-xs px-3 py-1.5 rounded-lg transition-colors inline-block ${
+                                  p.stock < 20
+                                    ? 'text-secondary-container hover:text-secondary bg-secondary-container/10'
+                                    : 'text-outline hover:text-primary hover:bg-surface-container'
+                                }`}
+                              >
+                                {p.stock < 20 ? 'Nhập thêm' : '+Stock'}
+                              </button>
                               <button
                                 onClick={() => handleOpenEditModal(p)}
                                 className="text-outline hover:text-primary transition-colors p-1.5 rounded-lg hover:bg-surface-container inline-block"
@@ -1089,6 +1273,51 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Restock Modal */}
+      {isRestockModalOpen && restockTarget && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <h3 className="font-headline-sm text-headline-sm text-primary mb-1">Nhập thêm hàng</h3>
+            <p className="text-sm text-on-surface-variant mb-4">
+              Sản phẩm: <span className="font-semibold text-on-surface">{restockTarget.name}</span>
+            </p>
+            <div className="bg-surface-container-low rounded-xl px-4 py-3 mb-4 flex items-center justify-between">
+              <span className="text-sm text-on-surface-variant">Tồn kho hiện tại</span>
+              <span className="font-bold text-on-surface text-lg">{restockTarget.stock}</span>
+            </div>
+            <div className="mb-4">
+              <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Số lượng nhập thêm</label>
+              <input
+                type="number"
+                min={1}
+                value={restockAmount}
+                onChange={(e) => setRestockAmount(Math.max(1, parseInt(e.target.value) || 1))}
+                className="w-full px-4 py-3 bg-surface-container-low border-2 border-outline-variant focus:border-secondary-container rounded-xl outline-none text-lg font-bold text-center transition-all"
+                autoFocus
+              />
+            </div>
+            <div className="bg-surface-container rounded-xl px-4 py-3 mb-5 flex items-center justify-between">
+              <span className="text-sm text-on-surface-variant">Tồn kho sau khi nhập</span>
+              <span className="font-bold text-secondary-container text-xl">{restockTarget.stock + restockAmount}</span>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setIsRestockModalOpen(false); setRestockTarget(null); }}
+                className="flex-1 px-4 py-2.5 border border-outline-variant text-primary rounded-xl font-label-md hover:bg-surface-container-low transition-colors"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                onClick={handleConfirmRestock}
+                className="flex-1 px-4 py-2.5 bg-secondary-container hover:bg-secondary-container/90 text-white rounded-xl font-label-md shadow-sm transition-colors"
+              >
+                Xác nhận nhập hàng
+              </button>
+            </div>
           </div>
         </div>
       )}

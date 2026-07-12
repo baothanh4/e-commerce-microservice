@@ -281,6 +281,51 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('Tất cả');
   
+  // Dynamic products state initialized with MOCK_PRODUCTS as fallback
+  const [products, setProducts] = useState<Product[]>(MOCK_PRODUCTS);
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const response = await fetch('http://localhost:8080/products');
+        if (response.ok) {
+          const data = await response.json();
+          if (data && data.length > 0) {
+            const mappedData: Product[] = data.map((p: any) => {
+              // Find matching mock details to preserve rich visual info (sizes, colors, specs, highlights) if they existed
+              const mockMatch = MOCK_PRODUCTS.find(mp => mp.name.toLowerCase() === p.name.toLowerCase() || mp.sku === p.sku);
+              return {
+                id: p.id,
+                name: p.name,
+                price: p.price,
+                originalPrice: p.price * 1.2,
+                rating: mockMatch ? mockMatch.rating : 4.8,
+                badge: p.stock === 0 ? "Hết hàng" : (mockMatch ? mockMatch.badge : ""),
+                category: p.category,
+                subCategory: mockMatch ? mockMatch.subCategory : (p.category === "Nội thất" ? "Phòng Khách" : "Đồ Trang Trí"),
+                brand: mockMatch ? mockMatch.brand : "Lusso",
+                material: mockMatch ? mockMatch.material : "Cao cấp",
+                description: p.description || "",
+                image: p.image || "https://via.placeholder.com/150",
+                gallery: mockMatch ? mockMatch.gallery : undefined,
+                sizes: mockMatch ? mockMatch.sizes : ["Compact", "Standard", "Deluxe"],
+                colors: mockMatch ? mockMatch.colors : undefined,
+                specs: mockMatch ? mockMatch.specs : undefined,
+                highlights: mockMatch ? mockMatch.highlights : undefined,
+                sku: p.sku,
+                stock: p.stock
+              };
+            });
+            setProducts(mappedData);
+          }
+        }
+      } catch (error) {
+        console.error("Lỗi khi tải sản phẩm từ backend, sử dụng mock data:", error);
+      }
+    };
+    fetchProducts();
+  }, []);
+
   // User Authentication State
   const [currentUser, setCurrentUser] = useState<{ name: string; email: string; token: string; role: string } | null>(() => {
     const savedUser = localStorage.getItem('currentUser');
@@ -437,7 +482,7 @@ function App() {
 
 
 
-  const selectedProduct = MOCK_PRODUCTS.find(p => p.id === selectedProductId) || null;
+  const selectedProduct = products.find(p => p.id === selectedProductId) || null;
 
   const cartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
 
@@ -493,7 +538,7 @@ function App() {
 
               {/* Best sellers grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-gutter px-4 md:px-0">
-                {MOCK_PRODUCTS.slice(0, 4).map((product) => (
+                {products.slice(0, 4).map((product) => (
                   <ProductCard
                     key={product.id}
                     product={product}
@@ -524,7 +569,7 @@ function App() {
         {currentView === 'products' && (
           <div className="animate-fadeIn">
             <ProductList 
-              products={MOCK_PRODUCTS}
+              products={products}
               onAddToCart={(p, e) => {
                 e.stopPropagation();
                 handleAddToCart(p);
@@ -550,7 +595,7 @@ function App() {
               onToggleFavorite={handleToggleFavorite}
               onNavigate={handleNavigate}
               onProductClick={handleProductDetailNavigate}
-              allProducts={MOCK_PRODUCTS}
+              allProducts={products}
             />
           </div>
         )}

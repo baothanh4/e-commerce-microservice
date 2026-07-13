@@ -6,6 +6,8 @@ import { Star, SlidersHorizontal, ChevronLeft, ChevronRight } from 'lucide-react
 
 interface ProductListProps {
   products: Product[];
+  activeCategory: string;
+  onCategoryChange: (category: string) => void;
   onAddToCart: (product: Product, e: React.MouseEvent) => void;
   onProductClick: (product: Product) => void;
   favorites: number[];
@@ -18,6 +20,8 @@ interface ProductListProps {
 
 export const ProductList: React.FC<ProductListProps> = ({
   products,
+  activeCategory,
+  onCategoryChange,
   onAddToCart,
   onProductClick,
   favorites,
@@ -67,12 +71,18 @@ export const ProductList: React.FC<ProductListProps> = ({
     setSelectedBrands([]);
     setMinRating(null);
     setSelectedSize(null);
+    onCategoryChange('Tất cả');
     setCurrentPage(1);
   };
 
   // Filtered and sorted products
   const filteredAndSortedProducts = useMemo(() => {
     let result = [...products];
+
+    // Apply Category/Functional Space Filter
+    if (activeCategory && activeCategory !== 'Tất cả') {
+      result = result.filter(p => p.subCategory === activeCategory || p.category === activeCategory);
+    }
 
     // Apply Search Query Filter
     if (searchQuery) {
@@ -120,7 +130,7 @@ export const ProductList: React.FC<ProductListProps> = ({
     }
 
     return result;
-  }, [products, appliedMinPrice, appliedMaxPrice, selectedBrands, minRating, selectedSize, sortBy, searchQuery]);
+  }, [products, appliedMinPrice, appliedMaxPrice, selectedBrands, minRating, selectedSize, sortBy, searchQuery, activeCategory]);
 
   // Pagination logic (4 items per page for catalog simulation)
   const itemsPerPage = 8;
@@ -157,6 +167,28 @@ export const ProductList: React.FC<ProductListProps> = ({
             >
               Đặt lại
             </button>
+          </div>
+
+          {/* Lọc không gian chức năng */}
+          <div className="mb-6 border-b border-outline-variant/30 pb-6">
+            <h3 className="font-label-md text-label-md text-on-surface dark:text-primary-fixed-dim mb-3 uppercase tracking-wider font-semibold">
+              Không gian chức năng
+            </h3>
+            <div className="space-y-2.5">
+              {['Tất cả', 'Phòng Khách', 'Phòng Ngủ', 'Bàn Ghế Ăn', 'Đồ Trang Trí'].map(space => (
+                <button
+                  key={space}
+                  onClick={() => { onCategoryChange(space); setCurrentPage(1); }}
+                  className={`flex items-center gap-3 text-left hover:text-secondary transition-colors w-full focus:outline-none ${
+                    activeCategory === space ? 'text-secondary font-bold' : 'text-on-surface-variant dark:text-tertiary-fixed-dim/80'
+                  }`}
+                >
+                  <span className="font-body-sm text-body-sm">
+                    {space}
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Lọc khoảng giá */}
@@ -398,6 +430,28 @@ export const ProductList: React.FC<ProductListProps> = ({
               >
                 Đóng
               </button>
+            </div>
+
+            {/* Lọc không gian chức năng */}
+            <div>
+              <h3 className="font-label-md text-label-md text-on-surface dark:text-primary-fixed-dim mb-3 uppercase tracking-wider font-semibold">
+                Không gian chức năng
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {['Tất cả', 'Phòng Khách', 'Phòng Ngủ', 'Bàn Ghế Ăn', 'Đồ Trang Trí'].map(space => (
+                  <button
+                    key={space}
+                    onClick={() => { onCategoryChange(space); setCurrentPage(1); setIsMobileFilterOpen(false); }}
+                    className={`px-3 py-1.5 border rounded-lg font-semibold text-label-sm transition-all focus:outline-none ${
+                      activeCategory === space
+                        ? 'bg-secondary text-white border-secondary'
+                        : 'bg-surface-container dark:bg-tertiary-container/30 border-outline-variant/40 text-on-surface hover:border-secondary dark:text-tertiary-fixed-dim'
+                    }`}
+                  >
+                    {space}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Price Inputs */}

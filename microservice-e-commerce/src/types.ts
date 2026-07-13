@@ -28,6 +28,7 @@ export interface Product {
   highlights?: string[];
   sku?: string;
   stock?: number;
+  createdAt?: string;
 }
 
 export interface CartItem {

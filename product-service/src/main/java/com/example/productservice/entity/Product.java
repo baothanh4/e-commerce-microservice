@@ -3,6 +3,8 @@ package com.example.productservice.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Table(name = "products")
 @Getter
@@ -18,6 +20,7 @@ public class Product {
     private String name;
     private String sku;
     private String category;
+    private String subCategory;
     private Integer stock;
     private Double price;
     
@@ -26,4 +29,14 @@ public class Product {
 
     @Column(length = 2000)
     private String description;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+    }
 }

@@ -5,10 +5,12 @@ interface ProductItem {
   name: string;
   sku: string;
   category: string;
+  subCategory: string;
   stock: number;
   price: number;
   image: string; // URL or ObjectURL from upload
   description?: string;
+  createdAt?: string;
 }
 
 interface ManagerDashboardProps {
@@ -17,82 +19,10 @@ interface ManagerDashboardProps {
   onLogout?: () => void;
 }
 
-const INITIAL_PRODUCTS: ProductItem[] = [
-  {
-    id: '1',
-    name: 'Ghế Thư Giãn Lusso',
-    sku: 'FUR-LU-001',
-    category: 'Nội thất',
-    stock: 45,
-    price: 8500000,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBfrh-5pYCAMpA5f8DnQAwem-l6MArBTGKY60DG1oS4YuhyIjU0gbS-l-YuBZeleopO_N7v8fB1-KlRACBabgE_Alt8bfuLZcu4HVNpE0_DndSgc-lm1ZNYvY_O4LHecnFxr_W1fFquxlLzpGuNWW29fLKdTbEME9G9G2uXt7qr_2T-sGsoM8N8Dg8CDRdCFiYpeQOvPRQJc_aTyAWR3EWL0642V2mjbk5-sVouzkesg6ihuQVhVMzcsO7_pApEeX6nB2AAsDOBiQ',
-    description: 'Ghế thư giãn Lusso mang lại nét sang trọng cho mọi không gian với đệm nhung êm ái.'
-  },
-  {
-    id: '2',
-    name: 'Bàn Trà Gỗ Sồi Oaka',
-    sku: 'FUR-OA-002',
-    category: 'Nội thất',
-    stock: 12,
-    price: 5900000,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDTwnGbduEbK4lrBhGO4OsZDWK5VtI1ikZA-6M9hxleOcq8fp_2e_MIFC_z9hzpr7S0ufa5RHFnqT3U_S2KodyECRXTBH25zsRxaIAl-wD0qpwnK1CWa3W_fM5ncT3hSV_C1Hr_s6oJnS_dSR_62fmwA3w8drpAHqnLoTpVsRqGBwf4w2OeaX2l59nYyLYp0oRT-LoYYE2HXcnJbAXhiACXakYTf7s857GtPszO1Lqx8fGGgkM-3Nw3krg94SQ3V3krthKH1mTBKQ',
-    description: 'Bàn trà Oaka làm từ gỗ sồi tuyển chọn kỹ lưỡng, vân gỗ tự nhiên sắc nét.'
-  },
-  {
-    id: '3',
-    name: 'Sofa Da Bò Minimalist',
-    sku: 'FUR-SO-003',
-    category: 'Nội thất',
-    stock: 8,
-    price: 42000000,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAc_NLLgeQi4KRnn31YHOuYJDD_D0pTWhujLu4e5fQtYwLiVznYLd2udhXb_FTCVU8Fm1tVI2bNLRy24LXM0ih-eF4EIfAvyTjOq_pM48wCG5iY7EUGtbGWWsA_cBSnx_sNNGeTHR2EG-fDTp1g6ZWtuH7-grqV0St2km6RUvMlNyH6hlXGrkK7ITiAzjKV2mO395CYOXDEM7jpMKSbdaN5JqS8Jp92MeGdHzErIUkBqw4kc0V8LXK9JnQc13mNHVgn82YMRgFgOA',
-    description: 'Sofa da bò cao cấp tối giản mang đến không gian phòng khách hiện đại.'
-  },
-  {
-    id: '4',
-    name: 'Đèn Đứng Nova Brass',
-    sku: 'DEC-NO-004',
-    category: 'Đồ trang trí',
-    stock: 15,
-    price: 3200000,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAgju5KWp1okl1BuFV9zyXORLeCytWwb3gNtd4T4Hk6WxbEGdEvm9XYbcReHCUU-2Pyl3dHwbTPHLtzF93zZtU2SJEfuIw_C5Kjf0dD17mlAVRrYCgUm3UHxFY4kQSFuNROH88mVGI9zD7C-iBWjP1o4fEfXqAXl9xt57fZrzvg8PaVqiSw3t0utO6YN18SjVCoazlZDGkhE5mldk5GHkWpKQpZangc23Q1yO4OszrUcyRiKTejG-y_kEI8u1PQVZwM2-1c2Nf2hQ',
-    description: 'Đèn Nova Brass toát lên vẻ cổ điển pha trộn hiện đại, kết cấu vững chãi từ đồng nguyên khối.'
-  },
-  {
-    id: '5',
-    name: 'Giường Bọc Nỉ Gray Lusso',
-    sku: 'FUR-GL-005',
-    category: 'Nội thất',
-    stock: 5,
-    price: 24500000,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAqb6HaIhqYSFINioZgapMiKzDkwxsCinNl0TojZGkQwQbJkTIV9IhmdEEr9UeTw5iS6o8Ycqdnnhmj7kQRAfZgjHBBD9MwK_CV_5o8nM51u-wmDD7X4VDbEJUNqGrdzKoJXP_BEDCDjczYhp1CcN5dVpM3-yPl7dmWIryFGRXSmYwHbGrvlmZrVLRDLI4mvIe8hoJlRzirpUae10S4WsL5O-cF77Z8eLl6jFUrWJcf-Wl0eI0wgz7emZ9MbeytROLIz56uytpPvA',
-    description: 'Giường ngủ Lusso Gray sở hữu đầu giường bọc nỉ xám thời thượng mang lại giấc ngủ êm ái.'
-  },
-  {
-    id: '6',
-    name: 'Bộ Bàn Ăn Gỗ Walnut',
-    sku: 'FUR-WA-006',
-    category: 'Nội thất',
-    stock: 0,
-    price: 18200000,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDCL68nTTiEgfC0ocTEDEbvx17h00UWYfPI-5kwOAHVOgmlz2uZ85SpL8SDnNbCFIDlfvL1ZewrBL6xtok6NPLe3_Oj5GXH46zQeP5ZydJEqUK08vn2dEE2WxtUFIhsn_ccU8kgRiA7R03dH6vHnXyonieNSmDCDpjUUhaYJDuje8Y1hBFphvPLraamS2VDsRA0G-1gcS-qCuxFRvp_hn8Xy8vjr1kWBSgogJBai97vAVRz3vUMJi11AkVFnzSQhPPMYaFSU0j47Q',
-    description: 'Bộ bàn ăn Walnut kết hợp giữa bàn gỗ óc chó cao cấp và 4 ghế tựa êm ái.'
-  },
-  {
-    id: '7',
-    name: 'Gối Tựa Sofa Premium Cotton',
-    sku: 'DEC-PC-007',
-    category: 'Đồ trang trí',
-    stock: 18,
-    price: 1250000,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCIMqMv8w9BkZDZBpPQFAAJr4ppSvn8AZoLET3FBHbtrQUpBoePKxz2fJg9CeD4XROkEuW7q1hZQUMd6-z8tBSaQ15V5_mLDhbqUKvtMYMSfkY-OoT7mEmTF5PKZyib604cu6a5P1oPa01CPTlUhNIc2hisJDF8knLoIXbaZuSjVCd_J801kA6SZns3Hu410VJlDXaXrTEE9nRByYloULdP56qrdCUX751BVI0V3QaweclU79fp8V3mAl-6DEKQbq-ItjCTttZgzw',
-    description: 'Gối tựa lưng Sofa làm từ sợi cotton tự nhiên dệt thô mộc mạc và êm ái.'
-  }
-];
 
 export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, currentUser, onLogout }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'inventory' | 'orders' | 'reports' | 'settings'>('inventory');
-  const [products, setProducts] = useState<ProductItem[]>(INITIAL_PRODUCTS);
+  const [products, setProducts] = useState<ProductItem[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All Categories');
@@ -108,10 +38,12 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
             name: p.name,
             sku: p.sku,
             category: p.category,
+            subCategory: p.subCategory || '',
             stock: p.stock,
             price: p.price,
             image: p.image || '',
-            description: p.description || ''
+            description: p.description || '',
+            createdAt: p.createdAt
           }));
           setProducts(mapped);
         }
@@ -137,6 +69,7 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
     name: '',
     sku: '',
     category: 'Nội thất',
+    subCategory: 'Phòng Khách',
     stock: 0,
     price: 0,
     image: '',
@@ -308,6 +241,7 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
       name: '',
       sku: `FUR-NEW-${Date.now().toString().slice(-4)}`,
       category: 'Nội thất',
+      subCategory: 'Phòng Khách',
       stock: 10,
       price: 2500000,
       image: '',
@@ -343,6 +277,7 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
           name: formData.name,
           sku: formData.sku.toUpperCase(),
           category: formData.category,
+          subCategory: formData.subCategory,
           stock: Number(formData.stock),
           price: Number(formData.price),
           image: finalImageUrl,
@@ -357,10 +292,12 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
           name: savedProd.name,
           sku: savedProd.sku,
           category: savedProd.category,
+          subCategory: savedProd.subCategory,
           stock: savedProd.stock,
           price: savedProd.price,
           image: savedProd.image,
-          description: savedProd.description
+          description: savedProd.description,
+          createdAt: savedProd.createdAt
         };
         setProducts(prev => [newProduct, ...prev]);
         setIsAddModalOpen(false);
@@ -381,6 +318,7 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
       name: product.name,
       sku: product.sku,
       category: product.category,
+      subCategory: product.subCategory || 'Phòng Khách',
       stock: product.stock,
       price: product.price,
       image: product.image,
@@ -417,6 +355,7 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
           name: formData.name,
           sku: formData.sku.toUpperCase(),
           category: formData.category,
+          subCategory: formData.subCategory,
           stock: Number(formData.stock),
           price: Number(formData.price),
           image: finalImageUrl,
@@ -433,10 +372,12 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
               name: updatedProd.name,
               sku: updatedProd.sku,
               category: updatedProd.category,
+              subCategory: updatedProd.subCategory,
               stock: updatedProd.stock,
               price: updatedProd.price,
               image: updatedProd.image,
-              description: updatedProd.description
+              description: updatedProd.description,
+              createdAt: updatedProd.createdAt
             };
           }
           return p;
@@ -969,7 +910,7 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
               </div>
 
               {/* SKU & Category Row */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Mã định danh SKU *</label>
                   <input
@@ -993,7 +934,19 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
                   >
                     <option value="Nội thất">Nội thất</option>
                     <option value="Đồ trang trí">Đồ trang trí</option>
-                    <option value="Đèn chiếu sáng">Đèn chiếu sáng</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Danh mục con</label>
+                  <select
+                    className="w-full px-3 py-2 bg-surface-container-low border border-outline-variant/60 focus:border-secondary-container rounded-xl outline-none text-sm transition-all cursor-pointer"
+                    value={formData.subCategory}
+                    onChange={(e) => handleInputChange('subCategory', e.target.value)}
+                  >
+                    <option value="Phòng Khách">Phòng Khách</option>
+                    <option value="Phòng Ngủ">Phòng Ngủ</option>
+                    <option value="Bàn Ghế Ăn">Bàn Ghế Ăn</option>
+                    <option value="Đồ Trang Trí">Đồ Trang Trí</option>
                   </select>
                 </div>
               </div>
@@ -1139,7 +1092,7 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
               </div>
 
               {/* SKU & Category Row */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Mã định danh SKU *</label>
                   <input
@@ -1162,7 +1115,19 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
                   >
                     <option value="Nội thất">Nội thất</option>
                     <option value="Đồ trang trí">Đồ trang trí</option>
-                    <option value="Đèn chiếu sáng">Đèn chiếu sáng</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Danh mục con</label>
+                  <select
+                    className="w-full px-3 py-2 bg-surface-container-low border border-outline-variant/60 focus:border-secondary-container rounded-xl outline-none text-sm transition-all cursor-pointer"
+                    value={formData.subCategory}
+                    onChange={(e) => handleInputChange('subCategory', e.target.value)}
+                  >
+                    <option value="Phòng Khách">Phòng Khách</option>
+                    <option value="Phòng Ngủ">Phòng Ngủ</option>
+                    <option value="Bàn Ghế Ăn">Bàn Ghế Ăn</option>
+                    <option value="Đồ Trang Trí">Đồ Trang Trí</option>
                   </select>
                 </div>
               </div>

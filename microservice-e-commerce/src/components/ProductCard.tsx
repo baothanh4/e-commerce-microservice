@@ -47,14 +47,38 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           <Heart className={`w-[18px] h-[18px] ${isFavorite ? 'fill-current' : ''}`} />
         </button>
 
-        {/* Badge overlay (e.g. Bán chạy, Mới) */}
-        {product.badge && (
-          <div className="absolute top-3 left-3">
-            <span className="bg-surface-bright dark:bg-surface-container-low text-primary dark:text-primary-fixed font-bold text-label-sm px-2.5 py-1 rounded border border-outline-variant/40 shadow-sm">
-              {product.badge}
-            </span>
-          </div>
-        )}
+        {/* Badge overlay (e.g. Bán chạy, Mới, New Arrival) */}
+        {(() => {
+          const isNew = (() => {
+            if (!product.createdAt) return false;
+            const createdDate = new Date(product.createdAt);
+            const oneWeekAgo = new Date();
+            oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+            return createdDate > oneWeekAgo;
+          })();
+
+          if (isNew) {
+            return (
+              <div className="absolute top-3 left-3 z-10">
+                <span className="bg-red-600 text-white font-bold text-[10px] tracking-wider uppercase px-2.5 py-1 rounded-md shadow-md animate-pulse border border-red-500">
+                  New Arrival
+                </span>
+              </div>
+            );
+          }
+
+          if (product.badge) {
+            return (
+              <div className="absolute top-3 left-3 z-10">
+                <span className="bg-surface-bright dark:bg-surface-container-low text-primary dark:text-primary-fixed font-bold text-label-sm px-2.5 py-1 rounded border border-outline-variant/40 shadow-sm">
+                  {product.badge}
+                </span>
+              </div>
+            );
+          }
+
+          return null;
+        })()}
 
         {/* Quick Add overlay */}
         <div className="absolute inset-x-0 bottom-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300 bg-gradient-to-t from-black/60 to-transparent flex justify-center z-10">

@@ -91,13 +91,37 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({
               alt={product.name} 
               className="w-full h-full object-cover transition-all duration-300"
             />
-            {product.badge && (
-              <div className="absolute top-4 left-4 bg-surface-container-highest dark:bg-surface-container-low px-3 py-1 rounded-full border border-outline-variant/40 shadow">
-                <span className="font-label-sm text-label-sm text-primary dark:text-primary-fixed font-bold uppercase tracking-wider">
-                  {product.badge}
-                </span>
-              </div>
-            )}
+            {(() => {
+              const isNew = (() => {
+                if (!product.createdAt) return false;
+                const createdDate = new Date(product.createdAt);
+                const oneWeekAgo = new Date();
+                oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+                return createdDate > oneWeekAgo;
+              })();
+
+              if (isNew) {
+                return (
+                  <div className="absolute top-4 left-4 bg-red-600 px-3 py-1 rounded-full border border-red-500 shadow animate-pulse z-10">
+                    <span className="font-label-sm text-label-sm text-white font-bold uppercase tracking-wider">
+                      New Arrival
+                    </span>
+                  </div>
+                );
+              }
+
+              if (product.badge) {
+                return (
+                  <div className="absolute top-4 left-4 bg-surface-container-highest dark:bg-surface-container-low px-3 py-1 rounded-full border border-outline-variant/40 shadow z-10">
+                    <span className="font-label-sm text-label-sm text-primary dark:text-primary-fixed font-bold uppercase tracking-wider">
+                      {product.badge}
+                    </span>
+                  </div>
+                );
+              }
+
+              return null;
+            })()}
           </div>
           
           {/* Gallery Thumbnails */}

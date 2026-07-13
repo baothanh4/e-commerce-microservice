@@ -22,6 +22,9 @@ public class ProductRequest {
     @NotBlank(message = "Danh mục không được để trống")
     private String category;
 
+    @NotBlank(message = "Danh mục con không được để trống")
+    private String subCategory;
+
     @NotNull(message = "Số lượng trong kho không được để trống")
     @Min(value = 0, message = "Số lượng trong kho phải lớn hơn hoặc bằng 0")
     @Positive(message = "Số lượng không được âm")

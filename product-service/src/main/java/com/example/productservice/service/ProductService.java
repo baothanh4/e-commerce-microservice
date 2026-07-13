@@ -26,6 +26,7 @@ public class ProductService {
                 .name(request.getName())
                 .sku(request.getSku())
                 .category(request.getCategory())
+                .subCategory(request.getSubCategory())
                 .stock(request.getStock())
                 .price(request.getPrice())
                 .image(request.getImage())
@@ -39,6 +40,7 @@ public class ProductService {
         product.setName(request.getName());
         product.setSku(request.getSku());
         product.setCategory(request.getCategory());
+        product.setSubCategory(request.getSubCategory());
         product.setStock(request.getStock());
         product.setPrice(request.getPrice());
         product.setImage(request.getImage());

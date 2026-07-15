@@ -12,7 +12,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: create-only
     show-sql: true
 eureka:
   client:
@@ -25,9 +25,9 @@ jwt:
 
 aws:
   s3:
-    bucket: ${AWS_BUCKET_NAME}
-    folder: ${AWS_FOLDER}
-    region: ${AWS_REGION}
-    access-key: ${AWS_ACCESS_KEY}
-    secret-key: ${AWS_SECRET_KEY}
+    bucket: ${AWS_BUCKET_NAME:dummy-bucket}
+    folder: ${AWS_FOLDER:dummy-folder}
+    region: ${AWS_REGION:us-east-1}
+    access-key: ${AWS_ACCESS_KEY:dummy-access-key}
+    secret-key: ${AWS_SECRET_KEY:dummy-secret-key}
 

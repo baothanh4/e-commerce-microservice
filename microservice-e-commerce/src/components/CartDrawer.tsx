@@ -6,8 +6,8 @@ interface CartDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   cartItems: CartItem[];
-  onUpdateQuantity: (productId: number, quantity: number) => void;
-  onRemoveItem: (productId: number) => void;
+  onUpdateQuantity: (productId: number, quantity: number, color?: string, size?: string) => void;
+  onRemoveItem: (productId: number, color?: string, size?: string) => void;
   onCheckout: () => void;
 }
 
@@ -87,7 +87,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
           ) : (
             cartItems.map((item) => (
               <div 
-                key={item.product.id} 
+                key={`${item.product.id}-${item.selectedColor || ''}-${item.selectedSize || ''}`} 
                 className="flex gap-4 p-3 bg-surface-bright dark:bg-surface-container/20 rounded-xl border border-outline-variant/30 hover:border-outline-variant/60 transition-all duration-200"
               >
                 {/* Product image */}
@@ -102,11 +102,28 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 {/* Info and controls */}
                 <div className="flex-1 flex flex-col justify-between">
                   <div className="flex justify-between items-start">
-                    <h3 className="font-semibold text-body-md text-primary dark:text-primary-fixed-dim line-clamp-1">
-                      {item.product.name}
-                    </h3>
+                    <div>
+                      <h3 className="font-semibold text-body-md text-primary dark:text-primary-fixed-dim line-clamp-1">
+                        {item.product.name}
+                      </h3>
+                      {/* Show selected variants */}
+                      {(item.selectedColor || item.selectedSize) && (
+                        <div className="flex flex-wrap gap-1.5 mt-1 text-[11px] text-outline">
+                          {item.selectedColor && (
+                            <span className="bg-surface-container-high dark:bg-surface-container-low px-1.5 py-0.5 rounded">
+                              Màu: {item.selectedColor}
+                            </span>
+                          )}
+                          {item.selectedSize && (
+                            <span className="bg-surface-container-high dark:bg-surface-container-low px-1.5 py-0.5 rounded">
+                              Size: {item.selectedSize}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
                     <button 
-                      onClick={() => onRemoveItem(item.product.id)}
+                      onClick={() => onRemoveItem(item.product.id, item.selectedColor, item.selectedSize)}
                       className="text-outline hover:text-error dark:hover:text-red-400 p-1 transition-colors ml-2"
                       title="Xóa sản phẩm"
                     >
@@ -114,7 +131,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                     </button>
                   </div>
                   
-                  <p className="text-body-sm text-on-surface-variant dark:text-tertiary-fixed-dim/50 truncate">
+                  <p className="text-body-sm text-on-surface-variant dark:text-tertiary-fixed-dim/50 truncate mt-1">
                     {item.product.material || 'Chất liệu cao cấp'}
                   </p>
 
@@ -122,7 +139,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                     {/* Quantity Selector */}
                     <div className="flex items-center border border-outline-variant/50 rounded-lg overflow-hidden bg-surface-container-low dark:bg-surface-container-high/10">
                       <button 
-                        onClick={() => onUpdateQuantity(item.product.id, item.quantity - 1)}
+                        onClick={() => onUpdateQuantity(item.product.id, item.quantity - 1, item.selectedColor, item.selectedSize)}
                         className="p-1 px-2 hover:bg-surface-container-highest dark:hover:bg-surface-container/30 text-outline hover:text-on-surface transition-colors"
                         disabled={item.quantity <= 1}
                       >
@@ -132,7 +149,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                         {item.quantity}
                       </span>
                       <button 
-                        onClick={() => onUpdateQuantity(item.product.id, item.quantity + 1)}
+                        onClick={() => onUpdateQuantity(item.product.id, item.quantity + 1, item.selectedColor, item.selectedSize)}
                         className="p-1 px-2 hover:bg-surface-container-highest dark:hover:bg-surface-container/30 text-outline hover:text-on-surface transition-colors"
                       >
                         <Plus className="w-3.5 h-3.5" />

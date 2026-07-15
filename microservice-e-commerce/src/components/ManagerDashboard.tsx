@@ -1,5 +1,15 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 
+interface ProductVariant {
+  id?: string;
+  sku: string;
+  color: string;
+  size: string;
+  price: number;
+  stock: number;
+  image?: string;
+}
+
 interface ProductItem {
   id: string;
   name: string;
@@ -11,6 +21,7 @@ interface ProductItem {
   image: string; // URL or ObjectURL from upload
   description?: string;
   createdAt?: string;
+  variants?: ProductVariant[];
 }
 
 interface ManagerDashboardProps {
@@ -43,7 +54,8 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
             price: p.price,
             image: p.image || '',
             description: p.description || '',
-            createdAt: p.createdAt
+            createdAt: p.createdAt,
+            variants: p.variants || []
           }));
           setProducts(mapped);
         }
@@ -65,7 +77,17 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
   const [isRestockModalOpen, setIsRestockModalOpen] = useState(false);
 
   // Form states and field errors
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string;
+    sku: string;
+    category: string;
+    subCategory: string;
+    stock: number;
+    price: number;
+    image: string;
+    description: string;
+    variants: ProductVariant[];
+  }>({
     name: '',
     sku: '',
     category: 'Nội thất',
@@ -73,8 +95,65 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
     stock: 0,
     price: 0,
     image: '',
-    description: ''
+    description: '',
+    variants: []
   });
+
+  const [tempVariant, setTempVariant] = useState({
+    color: '',
+    size: 'Standard',
+    price: 0,
+    stock: 10
+  });
+
+  const handleAddVariantToList = () => {
+    if (!tempVariant.color || tempVariant.price <= 0) {
+      alert("Vui lòng nhập đầy đủ màu sắc và giá của biến thể!");
+      return;
+    }
+    
+    const colorCode = tempVariant.color.trim().split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 3);
+    const sizeCode = tempVariant.size.slice(0, 3).toUpperCase();
+    const cleanProductSku = formData.sku.trim().toUpperCase();
+    const variantSku = `${cleanProductSku}-${colorCode}-${sizeCode}`;
+
+    const isDuplicate = formData.variants.some(v => 
+      v.sku.toUpperCase() === variantSku.toUpperCase() ||
+      (v.color.toLowerCase() === tempVariant.color.toLowerCase() && v.size.toLowerCase() === tempVariant.size.toLowerCase())
+    );
+    
+    if (isDuplicate) {
+      alert("Biến thể với Màu sắc + Kích thước này đã tồn tại!");
+      return;
+    }
+
+    const newVar: ProductVariant = {
+      sku: variantSku,
+      color: tempVariant.color,
+      size: tempVariant.size,
+      price: tempVariant.price,
+      stock: tempVariant.stock
+    };
+    
+    setFormData(prev => ({
+      ...prev,
+      variants: [...prev.variants, newVar]
+    }));
+    
+    setTempVariant({
+      color: '',
+      size: 'Standard',
+      price: 0,
+      stock: 10
+    });
+  };
+
+  const handleRemoveVariantFromList = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      variants: prev.variants.filter((_, i) => i !== index)
+    }));
+  };
   const [formErrors, setFormErrors] = useState<{
     name?: string;
     sku?: string;
@@ -245,7 +324,8 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
       stock: 10,
       price: 2500000,
       image: '',
-      description: ''
+      description: '',
+      variants: []
     });
     setFormErrors({});
     setIsAddModalOpen(true);
@@ -281,7 +361,8 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
           stock: Number(formData.stock),
           price: Number(formData.price),
           image: finalImageUrl,
-          description: formData.description
+          description: formData.description,
+          variants: formData.variants
         })
       });
 
@@ -297,7 +378,8 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
           price: savedProd.price,
           image: savedProd.image,
           description: savedProd.description,
-          createdAt: savedProd.createdAt
+          createdAt: savedProd.createdAt,
+          variants: savedProd.variants || []
         };
         setProducts(prev => [newProduct, ...prev]);
         setIsAddModalOpen(false);
@@ -322,7 +404,8 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
       stock: product.stock,
       price: product.price,
       image: product.image,
-      description: product.description || ''
+      description: product.description || '',
+      variants: product.variants || []
     });
     setFormErrors({});
     setIsEditModalOpen(true);
@@ -359,7 +442,8 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
           stock: Number(formData.stock),
           price: Number(formData.price),
           image: finalImageUrl,
-          description: formData.description
+          description: formData.description,
+          variants: formData.variants
         })
       });
 
@@ -377,7 +461,8 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
               price: updatedProd.price,
               image: updatedProd.image,
               description: updatedProd.description,
-              createdAt: updatedProd.createdAt
+              createdAt: updatedProd.createdAt,
+              variants: updatedProd.variants || []
             };
           }
           return p;
@@ -1043,6 +1128,115 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
                 />
               </div>
 
+              {/* Product Variants Section */}
+              <div className="border-t border-outline-variant/40 pt-4 mt-2">
+                <h4 className="font-bold text-sm text-primary mb-2">Biến thể sản phẩm (Variants)</h4>
+                
+                {/* Add new variant inputs */}
+                <div className="p-3 bg-surface-container rounded-xl border border-outline-variant/40 space-y-3 mb-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-0.5">Màu sắc *</label>
+                      <input
+                        type="text"
+                        placeholder="Ví dụ: Đen, Navy"
+                        className="w-full px-2 py-1.5 bg-surface-container-low border border-outline-variant/60 rounded-lg outline-none text-xs"
+                        value={tempVariant.color}
+                        onChange={(e) => setTempVariant(prev => ({ ...prev, color: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-0.5">Kích thước *</label>
+                      <select
+                        className="w-full px-2 py-1.5 bg-surface-container-low border border-outline-variant/60 rounded-lg outline-none text-xs cursor-pointer"
+                        value={tempVariant.size}
+                        onChange={(e) => setTempVariant(prev => ({ ...prev, size: e.target.value }))}
+                      >
+                        <option value="Compact">Compact</option>
+                        <option value="Standard">Standard</option>
+                        <option value="Deluxe">Deluxe</option>
+                      </select>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-0.5">Giá bán (VND) *</label>
+                      <input
+                        type="number"
+                        placeholder="Giá riêng cho biến thể"
+                        className="w-full px-2 py-1.5 bg-surface-container-low border border-outline-variant/60 rounded-lg outline-none text-xs"
+                        value={tempVariant.price || ''}
+                        onChange={(e) => setTempVariant(prev => ({ ...prev, price: Number(e.target.value) }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-0.5">Số lượng kho *</label>
+                      <input
+                        type="number"
+                        placeholder="Số lượng kho riêng"
+                        className="w-full px-2 py-1.5 bg-surface-container-low border border-outline-variant/60 rounded-lg outline-none text-xs"
+                        value={tempVariant.stock}
+                        onChange={(e) => setTempVariant(prev => ({ ...prev, stock: Number(e.target.value) }))}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-1">
+                    <button
+                      type="button"
+                      onClick={handleAddVariantToList}
+                      className="px-3 py-1.5 bg-primary text-white hover:bg-primary/90 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">add</span>
+                      Thêm biến thể
+                    </button>
+                  </div>
+                </div>
+
+                {/* Variants List Table */}
+                {formData.variants.length > 0 ? (
+                  <div className="max-h-[150px] overflow-y-auto border border-outline-variant/30 rounded-xl">
+                    <table className="w-full text-xs text-left border-collapse">
+                      <thead className="bg-surface-container-low text-on-surface-variant border-b border-outline-variant/30 sticky top-0">
+                        <tr>
+                          <th className="p-2 font-semibold">SKU</th>
+                          <th className="p-2 font-semibold">Màu sắc</th>
+                          <th className="p-2 font-semibold">Kích cỡ</th>
+                          <th className="p-2 font-semibold">Giá bán</th>
+                          <th className="p-2 font-semibold text-center">Kho</th>
+                          <th className="p-2 font-semibold text-center">Xóa</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-outline-variant/20 bg-surface-container-lowest">
+                        {formData.variants.map((v, idx) => (
+                          <tr key={idx} className="hover:bg-surface-container-low/40">
+                            <td className="p-2 font-mono text-[10px]">{v.sku}</td>
+                            <td className="p-2">{v.color}</td>
+                            <td className="p-2">{v.size}</td>
+                            <td className="p-2 font-semibold text-primary">{v.price.toLocaleString('vi-VN')} ₫</td>
+                            <td className="p-2 text-center">{v.stock}</td>
+                            <td className="p-2 text-center">
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveVariantFromList(idx)}
+                                className="text-outline hover:text-error transition-colors p-1"
+                              >
+                                <span className="material-symbols-outlined text-[16px]">delete</span>
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-xs text-on-surface-variant/70 italic text-center py-2 bg-surface-container-low/20 rounded-xl border border-dashed border-outline-variant/30">
+                    Chưa có biến thể nào được tạo.
+                  </p>
+                )}
+              </div>
+
               {/* Submit / Cancel Buttons */}
               <div className="pt-3 border-t border-outline-variant/40 flex justify-end space-x-2">
                 <button
@@ -1219,6 +1413,115 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
                   value={formData.description}
                   onChange={(e) => handleInputChange('description', e.target.value)}
                 />
+              </div>
+
+              {/* Product Variants Section */}
+              <div className="border-t border-outline-variant/40 pt-4 mt-2">
+                <h4 className="font-bold text-sm text-primary mb-2">Biến thể sản phẩm (Variants)</h4>
+                
+                {/* Add new variant inputs */}
+                <div className="p-3 bg-surface-container rounded-xl border border-outline-variant/40 space-y-3 mb-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-0.5">Màu sắc *</label>
+                      <input
+                        type="text"
+                        placeholder="Ví dụ: Đen, Navy"
+                        className="w-full px-2 py-1.5 bg-surface-container-low border border-outline-variant/60 rounded-lg outline-none text-xs"
+                        value={tempVariant.color}
+                        onChange={(e) => setTempVariant(prev => ({ ...prev, color: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-0.5">Kích thước *</label>
+                      <select
+                        className="w-full px-2 py-1.5 bg-surface-container-low border border-outline-variant/60 rounded-lg outline-none text-xs cursor-pointer"
+                        value={tempVariant.size}
+                        onChange={(e) => setTempVariant(prev => ({ ...prev, size: e.target.value }))}
+                      >
+                        <option value="Compact">Compact</option>
+                        <option value="Standard">Standard</option>
+                        <option value="Deluxe">Deluxe</option>
+                      </select>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-0.5">Giá bán (VND) *</label>
+                      <input
+                        type="number"
+                        placeholder="Giá riêng cho biến thể"
+                        className="w-full px-2 py-1.5 bg-surface-container-low border border-outline-variant/60 rounded-lg outline-none text-xs"
+                        value={tempVariant.price || ''}
+                        onChange={(e) => setTempVariant(prev => ({ ...prev, price: Number(e.target.value) }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-0.5">Số lượng kho *</label>
+                      <input
+                        type="number"
+                        placeholder="Số lượng kho riêng"
+                        className="w-full px-2 py-1.5 bg-surface-container-low border border-outline-variant/60 rounded-lg outline-none text-xs"
+                        value={tempVariant.stock}
+                        onChange={(e) => setTempVariant(prev => ({ ...prev, stock: Number(e.target.value) }))}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-1">
+                    <button
+                      type="button"
+                      onClick={handleAddVariantToList}
+                      className="px-3 py-1.5 bg-primary text-white hover:bg-primary/90 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">add</span>
+                      Thêm biến thể
+                    </button>
+                  </div>
+                </div>
+
+                {/* Variants List Table */}
+                {formData.variants.length > 0 ? (
+                  <div className="max-h-[150px] overflow-y-auto border border-outline-variant/30 rounded-xl">
+                    <table className="w-full text-xs text-left border-collapse">
+                      <thead className="bg-surface-container-low text-on-surface-variant border-b border-outline-variant/30 sticky top-0">
+                        <tr>
+                          <th className="p-2 font-semibold">SKU</th>
+                          <th className="p-2 font-semibold">Màu sắc</th>
+                          <th className="p-2 font-semibold">Kích cỡ</th>
+                          <th className="p-2 font-semibold">Giá bán</th>
+                          <th className="p-2 font-semibold text-center">Kho</th>
+                          <th className="p-2 font-semibold text-center">Xóa</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-outline-variant/20 bg-surface-container-lowest">
+                        {formData.variants.map((v, idx) => (
+                          <tr key={idx} className="hover:bg-surface-container-low/40">
+                            <td className="p-2 font-mono text-[10px]">{v.sku}</td>
+                            <td className="p-2">{v.color}</td>
+                            <td className="p-2">{v.size}</td>
+                            <td className="p-2 font-semibold text-primary">{v.price.toLocaleString('vi-VN')} ₫</td>
+                            <td className="p-2 text-center">{v.stock}</td>
+                            <td className="p-2 text-center">
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveVariantFromList(idx)}
+                                className="text-outline hover:text-error transition-colors p-1"
+                              >
+                                <span className="material-symbols-outlined text-[16px]">delete</span>
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-xs text-on-surface-variant/70 italic text-center py-2 bg-surface-container-low/20 rounded-xl border border-dashed border-outline-variant/30">
+                    Chưa có biến thể nào được tạo.
+                  </p>
+                )}
               </div>
 
               {/* Submit / Cancel Buttons */}

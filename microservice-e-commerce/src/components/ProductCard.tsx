@@ -25,12 +25,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   return (
     <div 
       onClick={() => onProductClick(product)}
-      className="bg-surface-container-lowest dark:bg-tertiary-container/30 rounded-xl overflow-hidden border border-outline-variant/40 hover:shadow-xl hover:border-outline-variant/80 transition-all duration-300 group cursor-pointer flex flex-col justify-between"
+      className="bg-surface-container-lowest dark:bg-tertiary-container/10 rounded-2xl overflow-hidden border border-outline-variant/20 hover:shadow-xl hover:border-outline-variant/60 transition-all duration-500 group cursor-pointer flex flex-col justify-between"
     >
-      <div className="relative h-[280px] bg-surface-variant/30 overflow-hidden">
+      <div className="relative h-[300px] bg-surface-variant/10 overflow-hidden">
+        {/* Subtle inner overlay frame */}
+        <div className="absolute inset-3 border border-white/10 rounded-xl z-20 pointer-events-none group-hover:inset-2.5 transition-all duration-500" />
+        
         {/* Product Image */}
         <img 
-          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
+          className="w-full h-full object-cover transition-transform duration-[1000ms] ease-out group-hover:scale-105" 
           alt={product.name} 
           src={product.image}
         />
@@ -39,12 +42,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         <button 
           type="button"
           onClick={(e) => onToggleFavorite(product.id, e)}
-          className={`absolute top-3 right-3 p-2 bg-white/95 dark:bg-primary/95 rounded-full shadow-md transition-all scale-95 duration-150 hover:scale-105 z-10 ${
-            isFavorite ? 'text-secondary dark:text-secondary-fixed' : 'text-outline hover:text-secondary'
+          className={`absolute top-3 right-3 p-2 bg-white/90 dark:bg-primary/90 rounded-full shadow-md transition-all scale-95 duration-200 hover:scale-105 z-10 ${
+            isFavorite ? 'text-secondary dark:text-secondary' : 'text-outline hover:text-secondary'
           }`}
           title={isFavorite ? "Xóa khỏi danh sách yêu thích" : "Thêm vào danh sách yêu thích"}
         >
-          <Heart className={`w-[18px] h-[18px] ${isFavorite ? 'fill-current' : ''}`} />
+          <Heart className={`w-4.5 h-4.5 ${isFavorite ? 'fill-current' : ''}`} />
         </button>
 
         {/* Badge overlay (e.g. Bán chạy, Mới, New Arrival) */}
@@ -60,8 +63,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           if (isNew) {
             return (
               <div className="absolute top-3 left-3 z-10">
-                <span className="bg-red-600 text-white font-bold text-[10px] tracking-wider uppercase px-2.5 py-1 rounded-md shadow-md animate-pulse border border-red-500">
-                  New Arrival
+                <span className="bg-secondary text-white font-mono text-[9px] tracking-widest uppercase px-2.5 py-1 rounded shadow-md border border-secondary">
+                  NEW ARRIVAL
                 </span>
               </div>
             );
@@ -70,7 +73,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           if (product.badge) {
             return (
               <div className="absolute top-3 left-3 z-10">
-                <span className="bg-surface-bright dark:bg-surface-container-low text-primary dark:text-primary-fixed font-bold text-label-sm px-2.5 py-1 rounded border border-outline-variant/40 shadow-sm">
+                <span className="bg-surface-bright dark:bg-surface-container-low text-primary dark:text-primary font-mono text-[9px] tracking-widest uppercase px-2.5 py-1 rounded border border-outline-variant/30 shadow-sm">
                   {product.badge}
                 </span>
               </div>
@@ -81,35 +84,35 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         })()}
 
         {/* Quick Add overlay */}
-        <div className="absolute inset-x-0 bottom-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300 bg-gradient-to-t from-black/60 to-transparent flex justify-center z-10">
+        <div className="absolute inset-x-0 bottom-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300 bg-gradient-to-t from-primary/70 to-transparent flex justify-center z-10">
           <button 
             type="button"
             onClick={(e) => onAddToCart(product, e)}
-            className="bg-[#0A2540] dark:bg-secondary-container hover:bg-primary dark:hover:bg-secondary text-white font-semibold text-label-md py-2.5 px-6 rounded-lg w-full shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 transform active:scale-95"
+            className="bg-primary dark:bg-secondary-container hover:bg-secondary dark:hover:bg-secondary text-white font-mono text-xs uppercase tracking-wider py-2.5 px-6 rounded-lg w-full shadow-md hover:shadow-lg transition-colors duration-200 flex items-center justify-center gap-2 transform active:scale-98"
           >
-            <ShoppingBag className="w-[18px] h-[18px]" /> Thêm vào giỏ
+            <ShoppingBag className="w-4 h-4" /> Thêm vào giỏ
           </button>
         </div>
       </div>
 
       {/* Info details */}
-      <div className="p-4 flex-1 flex flex-col justify-between">
+      <div className="p-5 flex-1 flex flex-col justify-between bg-surface-container-lowest dark:bg-tertiary-container/5">
         <div>
-          <h3 className="font-headline-sm text-[16px] leading-[24px] font-bold text-primary dark:text-primary-fixed-dim mb-1 truncate group-hover:text-secondary dark:group-hover:text-secondary-fixed transition-colors">
+          <h3 className="font-display-serif text-[20px] leading-[26px] font-medium text-primary dark:text-primary mb-1 truncate group-hover:text-secondary dark:group-hover:text-secondary transition-colors">
             {product.name}
           </h3>
-          <p className="font-body-sm text-body-sm text-on-surface-variant dark:text-tertiary-fixed-dim/60 mb-3 truncate">
-            {product.material || product.description}
+          <p className="font-body-sm text-xs text-on-surface-variant/80 dark:text-tertiary-fixed-dim/60 mb-4 truncate font-mono uppercase tracking-wider">
+            // {product.material || product.description}
           </p>
         </div>
         
-        <div className="flex items-center justify-between mt-auto">
-          <span className="font-body-lg text-body-lg font-bold text-primary dark:text-primary-fixed">
+        <div className="flex items-center justify-between mt-auto pt-2 border-t border-outline-variant/10">
+          <span className="font-body-lg text-body-lg font-bold text-primary dark:text-primary">
             {formatPrice(product.price)}
           </span>
-          <div className="flex items-center text-[#F59E0B] bg-amber-50 dark:bg-amber-950/20 px-2 py-0.5 rounded-md">
-            <Star className="w-[14px] h-[14px] fill-current mr-1" />
-            <span className="font-bold text-label-sm text-on-surface dark:text-tertiary-fixed-dim">
+          <div className="flex items-center text-[#F59E0B] bg-amber-500/10 px-2 py-0.5 rounded">
+            <Star className="w-3.5 h-3.5 fill-current mr-1" />
+            <span className="font-bold text-label-sm text-on-surface">
               {product.rating}
             </span>
           </div>

@@ -8,6 +8,16 @@ export interface SpecItem {
   value: string;
 }
 
+export interface ProductVariant {
+  id?: number;
+  sku: string;
+  color: string;
+  size: string;
+  price: number;
+  stock: number;
+  image?: string;
+}
+
 export interface Product {
   id: number;
   name: string;
@@ -29,6 +39,7 @@ export interface Product {
   sku?: string;
   stock?: number;
   createdAt?: string;
+  variants?: ProductVariant[];
 }
 
 export interface CartItem {
@@ -36,4 +47,22 @@ export interface CartItem {
   quantity: number;
   selectedColor?: string;
   selectedSize?: string;
+}
+
+export interface Order {
+  id: string;
+  items: CartItem[];
+  subtotal: number;
+  total: number;
+  receiverName: string;
+  phoneNumber: string;
+  address: string;
+  paymentMethod: 'COD' | 'CARD';
+  cardInfo?: {
+    cardNumber: string;
+    cardName: string;
+    expiryDate: string;
+  };
+  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'CANCELLED';
+  createdAt: string;
 }

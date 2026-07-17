@@ -3,6 +3,7 @@ package com.example.authservice.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -38,6 +39,10 @@ public class User {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role;
+
+    private String resetToken;
+
+    private Instant resetTokenExpiry;
 
     private LocalDateTime createdAt;
 

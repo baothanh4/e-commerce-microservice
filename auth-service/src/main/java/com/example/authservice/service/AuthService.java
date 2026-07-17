@@ -18,7 +18,13 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import com.example.authservice.dto.request.ForgotPasswordRequest;
+import com.example.authservice.dto.request.ResetPasswordRequest;
+import com.example.authservice.dto.response.ForgotPasswordResponse;
 
 import com.example.authservice.dto.response.UserProfileDto;
 import com.example.authservice.dto.response.AddressDto;
@@ -161,5 +167,50 @@ public class AuthService {
 
         // Gọi sang user-service để cập nhật thông tin chi tiết và trả về kết quả mới nhất
         return userClient.updateProfileByEmail(email, request);
+    }
+
+    @Transactional
+    public ForgotPasswordResponse forgotPassword(ForgotPasswordRequest request) {
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("Tài khoản với email này không tồn tại trong hệ thống"));
+
+        // Generate a 6-digit numeric token
+        String token = String.format("%06d", new java.util.Random().nextInt(999999));
+        user.setResetToken(token);
+        user.setResetTokenExpiry(Instant.now().plus(15, ChronoUnit.MINUTES));
+        userRepository.save(user);
+
+        return ForgotPasswordResponse.builder()
+                .message("Yêu cầu đặt lại mật khẩu đã được xử lý. Mã xác nhận đã được gửi.")
+                .token(token)
+                .build();
+    }
+
+    @Transactional
+    public String resetPassword(ResetPasswordRequest request) {
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new RuntimeException("Mật khẩu xác nhận không khớp");
+        }
+
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại"));
+
+        if (user.getResetToken() == null || !user.getResetToken().equals(request.getToken())) {
+            throw new RuntimeException("Mã xác nhận không đúng");
+        }
+
+        if (user.getResetTokenExpiry() == null || user.getResetTokenExpiry().isBefore(Instant.now())) {
+            throw new RuntimeException("Mã xác nhận đã hết hạn");
+        }
+
+        // Encode and update password
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        
+        // Clear token
+        user.setResetToken(null);
+        user.setResetTokenExpiry(null);
+        userRepository.save(user);
+
+        return "Đặt lại mật khẩu thành công!";
     }
 }

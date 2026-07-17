@@ -9,7 +9,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: create-only
+      ddl-auto: update
     show-sql: true
 
 server:

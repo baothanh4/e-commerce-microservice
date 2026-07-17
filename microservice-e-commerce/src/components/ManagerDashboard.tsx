@@ -38,6 +38,50 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All Categories');
 
+  // Admin Orders Management states
+  const [ordersList, setOrdersList] = useState<any[]>([]);
+  const [isOrderDetailsOpen, setIsOrderDetailsOpen] = useState(false);
+  const [selectedAdminOrder, setSelectedAdminOrder] = useState<any | null>(null);
+  const [isOrdersLoading, setIsOrdersLoading] = useState(false);
+
+  const fetchAllOrders = async () => {
+    setIsOrdersLoading(true);
+    try {
+      const response = await fetch('http://localhost:8080/users/orders');
+      if (response.ok) {
+        const data = await response.json();
+        console.log('[Admin] Đã tải đơn hàng từ server:', data);
+        setOrdersList(data);
+      } else {
+        const errText = await response.text();
+        console.error(`[Admin] Server lỗi ${response.status} khi tải đơn hàng:`, errText);
+      }
+    } catch (err) {
+      console.error('[Admin] Không kết nối được tới user-service:', err);
+    } finally {
+      setIsOrdersLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'orders') {
+      fetchAllOrders();
+    }
+  }, [activeTab]);
+
+  const handleUpdateStatus = async (orderId: string, status: string) => {
+    try {
+      const response = await fetch(`http://localhost:8080/users/orders/${orderId}/status?status=${status}`, {
+        method: 'PUT'
+      });
+      if (response.ok) {
+        fetchAllOrders();
+      }
+    } catch (err) {
+      console.error("Lỗi cập nhật trạng thái đơn hàng:", err);
+    }
+  };
+
   useEffect(() => {
     const fetchDashboardProducts = async () => {
       try {
@@ -103,7 +147,8 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
     color: '',
     size: 'Standard',
     price: 0,
-    stock: 10
+    stock: 10,
+    image: ''
   });
 
   const handleAddVariantToList = () => {
@@ -112,14 +157,14 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
       return;
     }
     
-    const colorCode = tempVariant.color.trim().split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 3);
-    const sizeCode = tempVariant.size.slice(0, 3).toUpperCase();
-    const cleanProductSku = formData.sku.trim().toUpperCase();
+    const colorCode = (tempVariant.color || '').trim().split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 3);
+    const sizeCode = (tempVariant.size || '').slice(0, 3).toUpperCase();
+    const cleanProductSku = (formData.sku || '').trim().toUpperCase();
     const variantSku = `${cleanProductSku}-${colorCode}-${sizeCode}`;
 
     const isDuplicate = formData.variants.some(v => 
-      v.sku.toUpperCase() === variantSku.toUpperCase() ||
-      (v.color.toLowerCase() === tempVariant.color.toLowerCase() && v.size.toLowerCase() === tempVariant.size.toLowerCase())
+      (v.sku || '').toUpperCase() === variantSku.toUpperCase() ||
+      ((v.color || '').toLowerCase() === tempVariant.color.toLowerCase() && (v.size || '').toLowerCase() === tempVariant.size.toLowerCase())
     );
     
     if (isDuplicate) {
@@ -132,7 +177,8 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
       color: tempVariant.color,
       size: tempVariant.size,
       price: tempVariant.price,
-      stock: tempVariant.stock
+      stock: tempVariant.stock,
+      image: tempVariant.image || undefined
     };
     
     setFormData(prev => ({
@@ -140,11 +186,13 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
       variants: [...prev.variants, newVar]
     }));
     
+    // Reset tempVariant
     setTempVariant({
       color: '',
       size: 'Standard',
       price: 0,
-      stock: 10
+      stock: 10,
+      image: ''
     });
   };
 
@@ -398,7 +446,7 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
     setSelectedFile(null);
     setFormData({
       name: product.name,
-      sku: product.sku,
+      sku: product.sku || '',
       category: product.category,
       subCategory: product.subCategory || 'Phòng Khách',
       stock: product.stock,
@@ -524,89 +572,87 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
   return (
     <div className="flex bg-background text-on-background font-body-md antialiased min-h-screen relative">
       {/* SideNavBar */}
-      <nav className="bg-primary-container h-screen w-64 fixed left-0 top-0 shadow-sm flex flex-col py-6 z-20">
+      <nav className="bg-[#181818] border-r border-white/5 h-screen w-64 fixed left-0 top-0 flex flex-col py-6 z-20">
         <div className="px-6 mb-8 flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-full overflow-hidden bg-surface-container-highest">
-            <div className="w-full h-full bg-gradient-to-tr from-secondary-container to-secondary flex items-center justify-center text-white font-bold">
-              {currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : 'M'}
-            </div>
+          <div className="w-9 h-9 rounded-full overflow-hidden bg-white/5 border border-white/10 flex items-center justify-center text-white font-display-serif font-medium text-sm">
+            {currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : 'M'}
           </div>
           <div>
-            <h2 className="font-headline-sm text-[16px] leading-[22px] font-bold text-white">Admin Panel</h2>
-            <p className="font-body-sm text-[12px] text-on-primary-container opacity-70">
+            <h2 className="font-display-serif text-sm font-semibold text-white">Quản Trị Viên</h2>
+            <p className="font-mono text-[9px] uppercase tracking-wider text-white/50">
               {currentUser?.name || 'Manager Account'}
             </p>
           </div>
         </div>
-        <ul className="space-y-1.5 flex-grow">
+        <ul className="space-y-1 flex-grow">
           <li>
             <button
               onClick={() => setActiveTab('overview')}
-              className={`w-full flex items-center text-left pl-4 py-3 transition-colors cursor-pointer duration-200 ${
+              className={`w-full flex items-center text-left pl-6 py-3 transition-colors cursor-pointer ${
                 activeTab === 'overview'
-                  ? 'text-secondary-fixed font-bold border-l-4 border-secondary-fixed bg-on-primary-container/10'
-                  : 'text-on-primary-container opacity-70 hover:opacity-100 hover:bg-on-primary-container/5'
+                  ? 'text-white bg-white/5 font-bold font-mono text-[10px] uppercase tracking-widest border-l-2 border-secondary'
+                  : 'text-white/50 hover:text-white hover:bg-white/5 font-mono text-[10px] uppercase tracking-widest'
               }`}
             >
-              <span className="material-symbols-outlined mr-3" style={{ fontVariationSettings: "'FILL' 0" }}>dashboard</span>
-              <span className="font-label-md text-label-md">Overview</span>
+              <span className="material-symbols-outlined mr-3 text-sm">dashboard</span>
+              <span>Overview</span>
             </button>
           </li>
           <li>
             <button
               onClick={() => setActiveTab('inventory')}
-              className={`w-full flex items-center text-left pl-4 py-3 transition-colors cursor-pointer duration-200 ${
+              className={`w-full flex items-center text-left pl-6 py-3 transition-colors cursor-pointer ${
                 activeTab === 'inventory'
-                  ? 'text-secondary-fixed font-bold border-l-4 border-secondary-fixed bg-on-primary-container/10'
-                  : 'text-on-primary-container opacity-70 hover:opacity-100 hover:bg-on-primary-container/5'
+                  ? 'text-white bg-white/5 font-bold font-mono text-[10px] uppercase tracking-widest border-l-2 border-secondary'
+                  : 'text-white/50 hover:text-white hover:bg-white/5 font-mono text-[10px] uppercase tracking-widest'
               }`}
             >
-              <span className="material-symbols-outlined mr-3" style={{ fontVariationSettings: "'FILL' 1" }}>inventory_2</span>
-              <span className="font-label-md text-label-md">Inventory</span>
+              <span className="material-symbols-outlined mr-3 text-sm">inventory_2</span>
+              <span>Inventory</span>
             </button>
           </li>
           <li>
             <button
               onClick={() => setActiveTab('orders')}
-              className={`w-full flex items-center text-left pl-4 py-3 transition-colors cursor-pointer duration-200 ${
+              className={`w-full flex items-center text-left pl-6 py-3 transition-colors cursor-pointer ${
                 activeTab === 'orders'
-                  ? 'text-secondary-fixed font-bold border-l-4 border-secondary-fixed bg-on-primary-container/10'
-                  : 'text-on-primary-container opacity-70 hover:opacity-100 hover:bg-on-primary-container/5'
+                  ? 'text-white bg-white/5 font-bold font-mono text-[10px] uppercase tracking-widest border-l-2 border-secondary'
+                  : 'text-white/50 hover:text-white hover:bg-white/5 font-mono text-[10px] uppercase tracking-widest'
               }`}
             >
-              <span className="material-symbols-outlined mr-3" style={{ fontVariationSettings: "'FILL' 0" }}>shopping_cart</span>
-              <span className="font-label-md text-label-md">Orders</span>
+              <span className="material-symbols-outlined mr-3 text-sm">shopping_cart</span>
+              <span>Orders</span>
             </button>
           </li>
           <li>
             <button
               onClick={() => setActiveTab('reports')}
-              className={`w-full flex items-center text-left pl-4 py-3 transition-colors cursor-pointer duration-200 ${
+              className={`w-full flex items-center text-left pl-6 py-3 transition-colors cursor-pointer ${
                 activeTab === 'reports'
-                  ? 'text-secondary-fixed font-bold border-l-4 border-secondary-fixed bg-on-primary-container/10'
-                  : 'text-on-primary-container opacity-70 hover:opacity-100 hover:bg-on-primary-container/5'
+                  ? 'text-white bg-white/5 font-bold font-mono text-[10px] uppercase tracking-widest border-l-2 border-secondary'
+                  : 'text-white/50 hover:text-white hover:bg-white/5 font-mono text-[10px] uppercase tracking-widest'
               }`}
             >
-              <span className="material-symbols-outlined mr-3" style={{ fontVariationSettings: "'FILL' 0" }}>bar_chart</span>
-              <span className="font-label-md text-label-md">Reports</span>
+              <span className="material-symbols-outlined mr-3 text-sm">bar_chart</span>
+              <span>Reports</span>
             </button>
           </li>
         </ul>
-        <div className="mt-auto space-y-1">
+        <div className="mt-auto space-y-1 font-mono text-[10px] uppercase tracking-widest font-bold">
           <button
             onClick={() => onNavigate('home')}
-            className="w-full flex items-center text-left text-on-primary-container opacity-70 hover:opacity-100 pl-4 py-2.5 hover:bg-on-primary-container/5 transition-colors cursor-pointer"
+            className="w-full flex items-center text-left text-white/50 hover:text-white pl-6 py-2.5 hover:bg-white/5 transition-colors cursor-pointer"
           >
-            <span className="material-symbols-outlined mr-3">store</span>
-            <span className="font-label-md text-label-md">Back to Shop</span>
+            <span className="material-symbols-outlined mr-3 text-sm">store</span>
+            <span>Cửa hàng</span>
           </button>
           {onLogout && (
             <button
               onClick={onLogout}
-              className="w-full flex items-center text-left text-error opacity-80 hover:opacity-100 pl-4 py-2.5 hover:bg-error-container/15 transition-colors cursor-pointer"
+              className="w-full flex items-center text-left text-error opacity-80 hover:opacity-100 pl-6 py-2.5 hover:bg-error/5 transition-colors cursor-pointer"
             >
-              <span className="material-symbols-outlined mr-3">logout</span>
-              <span className="font-label-md text-label-md">Logout</span>
+              <span className="material-symbols-outlined mr-3 text-sm">logout</span>
+              <span>Đăng xuất</span>
             </button>
           )}
         </div>
@@ -615,15 +661,14 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
       {/* Main content wrapper */}
       <div className="flex-grow pl-64 min-h-screen flex flex-col">
         {/* TopNavBar */}
-        <header className="bg-surface-container-lowest fixed top-0 right-0 w-[calc(100%-16rem)] h-16 border-b border-outline-variant z-10 flex justify-between items-center px-8">
+        <header className="bg-surface fixed top-0 right-0 w-[calc(100%-16rem)] h-16 border-b border-outline-variant/15 z-10 flex justify-between items-center px-8">
           <div className="flex items-center flex-1">
-            <h1 className="font-headline-sm text-headline-sm font-black text-primary mr-8 tracking-tight cursor-pointer" onClick={() => onNavigate('home')}>
-              StockMaster
+            <h1 className="font-display-serif text-xl font-medium text-primary mr-8 tracking-wide cursor-pointer" onClick={() => onNavigate('home')}>
+              LuxeCommerce Admin
             </h1>
-            <div className="relative w-full max-w-md hidden md:block">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 transform -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+            <div className="relative w-full max-w-sm hidden md:block">
               <input
-                className="w-full pl-10 pr-4 py-1.5 bg-surface-container-low border border-outline-variant rounded-xl text-sm focus:outline-none focus:border-secondary-container focus:ring-2 focus:ring-secondary-container/20 transition-all outline-none"
+                className="w-full pl-4 pr-4 py-1.5 bg-surface-container-low border border-outline-variant/30 rounded-md text-xs font-mono placeholder:text-outline-variant/60 focus:outline-none focus:border-secondary transition-all outline-none"
                 placeholder="Tìm kiếm nhanh sản phẩm, SKU..."
                 type="text"
                 value={searchQuery}
@@ -632,13 +677,13 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
             </div>
           </div>
           <div className="flex items-center space-x-4">
-            <button className="text-on-surface-variant hover:text-secondary-container transition-colors p-2 rounded-full hover:bg-surface-container-low relative">
-              <span className="material-symbols-outlined">notifications</span>
+            <button className="text-on-surface-variant hover:text-secondary transition-colors p-2 rounded-full hover:bg-surface-container-low relative">
+              <span className="material-symbols-outlined text-base">notifications</span>
               {lowStockCount > 0 && (
-                <span className="absolute top-1 right-1 bg-[#F57C00] h-2 w-2 rounded-full animate-ping"></span>
+                <span className="absolute top-2 right-2 bg-secondary h-1.5 w-1.5 rounded-full animate-ping"></span>
               )}
             </button>
-            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-primary-container text-white flex items-center justify-center font-bold text-xs select-none">
+            <div className="w-8 h-8 rounded-full border border-outline-variant/20 bg-surface-container-low text-primary flex items-center justify-center font-display-serif text-xs font-bold select-none">
               A
             </div>
           </div>
@@ -917,15 +962,222 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
           )}
 
           {activeTab === 'orders' && (
-            <div className="text-center py-16 card-static rounded-2xl shadow-sm">
-              <span className="material-symbols-outlined text-[64px] text-outline/40 mb-3 block">receipt_long</span>
-              <h2 className="font-headline-sm text-headline-sm text-primary mb-1">Quản lý đơn đặt hàng</h2>
-              <p className="text-on-surface-variant font-body-md text-body-md max-w-md mx-auto mb-6">
-                Theo dõi quá trình vận chuyển các món đồ nội thất và đối soát doanh thu tự động.
-              </p>
-              <button onClick={() => setActiveTab('inventory')} className="px-5 py-2.5 bg-primary text-white font-label-md text-label-md rounded-xl shadow-md hover:bg-primary/95 transition-all">
-                Quay lại quản lý kho
-              </button>
+            <div className="space-y-8 animate-fadeIn">
+              {/* Title Header */}
+              <div>
+                <h1 className="font-display-serif text-3xl font-medium text-primary mb-1">Quản Lý Đơn Hàng</h1>
+                <p className="text-on-surface-variant font-mono text-[9px] uppercase tracking-widest">
+                  // Quản trị lịch sử mua sắm, giao vận và cập nhật trạng thái hóa đơn
+                </p>
+              </div>
+
+              {isOrdersLoading ? (
+                <div className="card-static rounded-lg border border-outline-variant/15 p-16 text-center">
+                  <span className="font-mono text-xs uppercase tracking-widest text-outline">Đang tải danh sách đơn hàng...</span>
+                </div>
+              ) : (
+                <div className="card-static rounded-lg border border-outline-variant/15 overflow-hidden bg-surface-container-lowest shadow-sm">
+                  <div className="p-5 border-b border-outline-variant/15 flex justify-between items-center bg-surface-bright/50">
+                    <h2 className="font-display-serif text-lg font-semibold text-primary">Danh sách hóa đơn mua sắm</h2>
+                    <div className="flex items-center gap-4">
+                      <span className="font-mono text-[10px] uppercase tracking-widest text-outline">Tổng số: {ordersList.length} đơn</span>
+                      <button
+                        onClick={fetchAllOrders}
+                        className="font-mono text-[10px] uppercase tracking-wider text-secondary border border-secondary/30 px-3 py-1 rounded hover:bg-secondary/5 transition-colors"
+                      >
+                        ↻ Làm mới
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse font-mono text-xs">
+                      <thead>
+                        <tr className="bg-surface-container-low border-b border-outline-variant/15 text-on-surface-variant">
+                          <th className="py-3.5 px-6 font-bold uppercase tracking-wider">Mã đơn</th>
+                          <th className="py-3.5 px-6 font-bold uppercase tracking-wider">Ngày đặt</th>
+                          <th className="py-3.5 px-6 font-bold uppercase tracking-wider">Khách hàng</th>
+                          <th className="py-3.5 px-6 font-bold uppercase tracking-wider">Tổng tiền</th>
+                          <th className="py-3.5 px-6 font-bold uppercase tracking-wider">Thanh toán</th>
+                          <th className="py-3.5 px-6 font-bold uppercase tracking-wider text-center">Trạng thái</th>
+                          <th className="py-3.5 px-6 font-bold uppercase tracking-wider text-right">Thao tác</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-outline-variant/10">
+                        {ordersList.length > 0 ? (
+                          ordersList.map((order) => (
+                            <tr key={order.id} className="hover:bg-surface-bright/20 transition-colors">
+                              <td className="py-4 px-6 font-bold text-primary">#{order.id}</td>
+                              <td className="py-4 px-6 text-on-surface-variant/80">{order.createdAt ? order.createdAt.split(',')[0] : 'N/A'}</td>
+                              <td className="py-4 px-6">
+                                <p className="font-semibold text-primary font-body-sm">{order.receiverName}</p>
+                                <p className="text-[10px] text-outline mt-0.5">{order.phoneNumber}</p>
+                              </td>
+                              <td className="py-4 px-6 font-bold text-primary">
+                                {order.total != null ? order.total.toLocaleString('vi-VN') : '0'} ₫
+                              </td>
+                              <td className="py-4 px-6 font-bold">
+                                <span className={`text-[10px] uppercase tracking-wider ${
+                                  order.paymentMethod === 'CARD' ? 'text-emerald-600' : 'text-[#FF5F38]'
+                                }`}>
+                                  {order.paymentMethod === 'CARD' ? 'Thẻ' : 'COD'}
+                                </span>
+                              </td>
+                              <td className="py-4 px-6 text-center">
+                                <select
+                                  value={order.status}
+                                  onChange={(e) => handleUpdateStatus(order.id, e.target.value)}
+                                  className={`font-mono text-[9px] uppercase tracking-wider font-bold rounded px-2.5 py-1 bg-surface border cursor-pointer focus:outline-none ${
+                                    order.status === 'COMPLETED' ? 'text-emerald-600 border-emerald-500/20 bg-emerald-500/5' :
+                                    order.status === 'PROCESSING' ? 'text-blue-600 border-blue-500/20 bg-blue-500/5' :
+                                    order.status === 'CANCELLED' ? 'text-error border-error/20 bg-error/5' :
+                                    'text-[#FF5F38] border-amber-500/20 bg-amber-500/5'
+                                  }`}
+                                >
+                                  <option value="PENDING">Chờ xử lý</option>
+                                  <option value="PROCESSING">Đang giao</option>
+                                  <option value="COMPLETED">Đã giao</option>
+                                  <option value="CANCELLED">Đã hủy</option>
+                                </select>
+                              </td>
+                              <td className="py-4 px-6 text-right">
+                                <button
+                                  onClick={() => {
+                                    setSelectedAdminOrder(order);
+                                    setIsOrderDetailsOpen(true);
+                                  }}
+                                  className="text-secondary hover:underline font-bold text-xs uppercase tracking-wider"
+                                >
+                                  Chi tiết
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={7} className="py-12 text-center text-outline">
+                              Bảng quản lý chưa ghi nhận hóa đơn nào.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Order Detail Modal */}
+              {isOrderDetailsOpen && selectedAdminOrder && (
+                <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fadeIn">
+                  <div className="bg-surface max-w-3xl w-full border border-outline-variant/20 rounded-lg shadow-2xl p-6 relative flex flex-col max-h-[85vh] animate-fadeInUp">
+                    {/* Modal Header */}
+                    <div className="flex justify-between items-center border-b border-outline-variant/15 pb-4 mb-4">
+                      <h3 className="font-display-serif text-xl font-semibold text-primary">
+                        Hóa Đơn Chi Tiết #{selectedAdminOrder.id}
+                      </h3>
+                      <button
+                        onClick={() => {
+                          setIsOrderDetailsOpen(false);
+                          setSelectedAdminOrder(null);
+                        }}
+                        className="text-on-surface-variant hover:text-primary transition-colors font-mono text-sm font-bold"
+                      >
+                        [ĐÓNG]
+                      </button>
+                    </div>
+
+                    {/* Modal Body */}
+                    <div className="overflow-y-auto space-y-6 pr-1">
+                      {/* Recipient details */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b border-outline-variant/10 pb-4">
+                        <div className="space-y-1.5 font-mono text-xs">
+                          <p className="font-bold text-primary uppercase text-[10px] tracking-wider mb-1 text-secondary">Người Nhận Hàng</p>
+                          <p>Họ tên: <span className="text-primary font-bold">{selectedAdminOrder.receiverName}</span></p>
+                          <p>Điện thoại: <span className="text-primary font-bold">{selectedAdminOrder.phoneNumber}</span></p>
+                          <p>Địa chỉ: <span className="text-primary font-bold">{selectedAdminOrder.address}</span></p>
+                        </div>
+                        <div className="space-y-1.5 font-mono text-xs">
+                          <p className="font-bold text-primary uppercase text-[10px] tracking-wider mb-1 text-secondary">Giao Dịch</p>
+                          <p>Ngày tạo: <span className="text-primary font-bold">{selectedAdminOrder.createdAt}</span></p>
+                          <p>Phương thức: <span className="text-primary font-bold">{selectedAdminOrder.paymentMethod === 'CARD' ? 'Thẻ ngân hàng' : 'COD (Tiền mặt)'}</span></p>
+                          {selectedAdminOrder.paymentMethod === 'CARD' && (
+                            <p>Số thẻ: <span className="text-primary font-bold">{selectedAdminOrder.cardNumber}</span></p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Items List */}
+                      <div className="space-y-3">
+                        <h4 className="font-display-serif text-sm font-semibold text-primary">Sản Phẩm Đã Mua</h4>
+                        <div className="border border-outline-variant/10 rounded overflow-hidden">
+                          <table className="w-full text-left border-collapse font-mono text-[11px]">
+                            <thead>
+                              <tr className="bg-surface border-b border-outline-variant/10 text-on-surface-variant">
+                                <th className="py-2.5 px-4 font-bold uppercase">Mặt hàng</th>
+                                <th className="py-2.5 px-4 font-bold uppercase">SKU</th>
+                                <th className="py-2.5 px-4 font-bold uppercase text-center">Giá</th>
+                                <th className="py-2.5 px-4 font-bold uppercase text-center">SL</th>
+                                <th className="py-2.5 px-4 font-bold uppercase text-right">Tổng</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-outline-variant/10">
+                              {selectedAdminOrder.items && selectedAdminOrder.items.length > 0 ? (
+                                selectedAdminOrder.items.map((item: any, idx: number) => (
+                                  <tr key={idx}>
+                                    <td className="py-3 px-4 flex items-center gap-3">
+                                      {item.image && (
+                                        <img src={item.image} alt={item.productName} className="w-8 h-8 object-cover rounded border border-outline-variant/10" />
+                                      )}
+                                      <div>
+                                        <p className="font-bold text-primary line-clamp-1">{item.productName}</p>
+                                        {(item.selectedColor || item.selectedSize) && (
+                                          <p className="text-[9px] text-outline">
+                                            {item.selectedColor && `Màu: ${item.selectedColor}`} {item.selectedColor && item.selectedSize && '•'} {item.selectedSize && `Size: ${item.selectedSize}`}
+                                          </p>
+                                        )}
+                                      </div>
+                                    </td>
+                                    <td className="py-3 px-4 text-on-surface-variant/80">{item.sku || 'N/A'}</td>
+                                    <td className="py-3 px-4 text-center">{item.price.toLocaleString('vi-VN')} ₫</td>
+                                    <td className="py-3 px-4 text-center font-bold">{item.quantity}</td>
+                                    <td className="py-3 px-4 text-right font-bold text-primary">
+                                      {(item.price * item.quantity).toLocaleString('vi-VN')} ₫
+                                    </td>
+                                  </tr>
+                                ))
+                              ) : (
+                                <tr>
+                                  <td colSpan={5} className="py-6 text-center text-outline">
+                                    Đơn hàng mẫu (Không có danh mục mặt hàng cụ thể)
+                                  </td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+
+                      {/* Pricing calculation summary */}
+                      <div className="flex flex-col items-end pt-3">
+                        <div className="w-full max-w-xs space-y-2 font-mono text-xs">
+                          <div className="flex justify-between">
+                            <span>Tạm tính:</span>
+                            <span className="text-primary font-bold">{selectedAdminOrder.subtotal.toLocaleString('vi-VN')} ₫</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Phí vận chuyển:</span>
+                            <span className="text-secondary font-bold">Miễn phí</span>
+                          </div>
+                          <div className="border-t border-outline-variant/15 pt-2 flex justify-between font-display-serif text-base font-bold text-primary">
+                            <span>Tổng tiền:</span>
+                            <span>{selectedAdminOrder.total.toLocaleString('vi-VN')} ₫</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -1137,13 +1389,28 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-0.5">Màu sắc *</label>
-                      <input
-                        type="text"
-                        placeholder="Ví dụ: Đen, Navy"
-                        className="w-full px-2 py-1.5 bg-surface-container-low border border-outline-variant/60 rounded-lg outline-none text-xs"
+                      <select
+                        className="w-full px-2 py-1.5 bg-surface-container-low border border-outline-variant/60 rounded-lg outline-none text-xs cursor-pointer"
                         value={tempVariant.color}
                         onChange={(e) => setTempVariant(prev => ({ ...prev, color: e.target.value }))}
-                      />
+                      >
+                        <option value="">Chọn màu sắc</option>
+                        <option value="Classic Navy">Classic Navy</option>
+                        <option value="Matte Black">Matte Black</option>
+                        <option value="Natural Oak">Natural Oak</option>
+                        <option value="Tan Brown">Tan Brown</option>
+                        <option value="Charcoal Black">Charcoal Black</option>
+                        <option value="Đen">Đen</option>
+                        <option value="Trắng">Trắng</option>
+                        <option value="Xám">Xám</option>
+                        <option value="Đỏ">Đỏ</option>
+                        <option value="Xanh dương">Xanh dương</option>
+                        <option value="Vàng">Vàng</option>
+                        <option value="Xanh lá">Xanh lá</option>
+                        <option value="Hồng">Hồng</option>
+                        <option value="Cam">Cam</option>
+                        <option value="Nâu">Nâu</option>
+                      </select>
                     </div>
                     <div>
                       <label className="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-0.5">Kích thước *</label>
@@ -1182,6 +1449,39 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
                     </div>
                   </div>
 
+                  <div>
+                    <label className="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-0.5">Hình ảnh biến thể (Link URL hoặc tải lên)</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Dán link hình ảnh (URL)..."
+                        className="flex-grow px-2 py-1.5 bg-surface-container-low border border-outline-variant/60 rounded-lg outline-none text-xs"
+                        value={tempVariant.image || ''}
+                        onChange={(e) => setTempVariant(prev => ({ ...prev, image: e.target.value }))}
+                      />
+                      <label className="flex items-center gap-1.5 px-2 py-1.5 bg-surface-container border border-outline-variant hover:bg-surface-container-high rounded-lg cursor-pointer text-[10px] font-semibold text-primary">
+                        <span className="material-symbols-outlined text-[14px]">upload</span>
+                        Tải ảnh
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={async (e) => {
+                            if (e.target.files && e.target.files.length > 0) {
+                              try {
+                                const file = e.target.files[0];
+                                const uploadedUrl = await uploadImageIfSelected(file);
+                                setTempVariant(prev => ({ ...prev, image: uploadedUrl }));
+                              } catch (err: any) {
+                                alert("Lỗi khi tải ảnh: " + err.message);
+                              }
+                            }
+                          }}
+                        />
+                      </label>
+                    </div>
+                  </div>
+
                   <div className="flex justify-end pt-1">
                     <button
                       type="button"
@@ -1200,6 +1500,7 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
                     <table className="w-full text-xs text-left border-collapse">
                       <thead className="bg-surface-container-low text-on-surface-variant border-b border-outline-variant/30 sticky top-0">
                         <tr>
+                          <th className="p-2 font-semibold">Ảnh</th>
                           <th className="p-2 font-semibold">SKU</th>
                           <th className="p-2 font-semibold">Màu sắc</th>
                           <th className="p-2 font-semibold">Kích cỡ</th>
@@ -1211,6 +1512,13 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
                       <tbody className="divide-y divide-outline-variant/20 bg-surface-container-lowest">
                         {formData.variants.map((v, idx) => (
                           <tr key={idx} className="hover:bg-surface-container-low/40">
+                            <td className="p-2">
+                              {v.image ? (
+                                <img src={v.image} alt={v.sku} className="w-8 h-8 object-cover rounded border border-outline-variant/30" />
+                              ) : (
+                                <span className="text-[10px] text-on-surface-variant/40">Không có</span>
+                              )}
+                            </td>
                             <td className="p-2 font-mono text-[10px]">{v.sku}</td>
                             <td className="p-2">{v.color}</td>
                             <td className="p-2">{v.size}</td>
@@ -1424,13 +1732,28 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-0.5">Màu sắc *</label>
-                      <input
-                        type="text"
-                        placeholder="Ví dụ: Đen, Navy"
-                        className="w-full px-2 py-1.5 bg-surface-container-low border border-outline-variant/60 rounded-lg outline-none text-xs"
+                      <select
+                        className="w-full px-2 py-1.5 bg-surface-container-low border border-outline-variant/60 rounded-lg outline-none text-xs cursor-pointer"
                         value={tempVariant.color}
                         onChange={(e) => setTempVariant(prev => ({ ...prev, color: e.target.value }))}
-                      />
+                      >
+                        <option value="">Chọn màu sắc</option>
+                        <option value="Classic Navy">Classic Navy</option>
+                        <option value="Matte Black">Matte Black</option>
+                        <option value="Natural Oak">Natural Oak</option>
+                        <option value="Tan Brown">Tan Brown</option>
+                        <option value="Charcoal Black">Charcoal Black</option>
+                        <option value="Đen">Đen</option>
+                        <option value="Trắng">Trắng</option>
+                        <option value="Xám">Xám</option>
+                        <option value="Đỏ">Đỏ</option>
+                        <option value="Xanh dương">Xanh dương</option>
+                        <option value="Vàng">Vàng</option>
+                        <option value="Xanh lá">Xanh lá</option>
+                        <option value="Hồng">Hồng</option>
+                        <option value="Cam">Cam</option>
+                        <option value="Nâu">Nâu</option>
+                      </select>
                     </div>
                     <div>
                       <label className="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-0.5">Kích thước *</label>
@@ -1469,6 +1792,39 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
                     </div>
                   </div>
 
+                  <div>
+                    <label className="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-0.5">Hình ảnh biến thể (Link URL hoặc tải lên)</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Dán link hình ảnh (URL)..."
+                        className="flex-grow px-2 py-1.5 bg-surface-container-low border border-outline-variant/60 rounded-lg outline-none text-xs"
+                        value={tempVariant.image || ''}
+                        onChange={(e) => setTempVariant(prev => ({ ...prev, image: e.target.value }))}
+                      />
+                      <label className="flex items-center gap-1.5 px-2 py-1.5 bg-surface-container border border-outline-variant hover:bg-surface-container-high rounded-lg cursor-pointer text-[10px] font-semibold text-primary">
+                        <span className="material-symbols-outlined text-[14px]">upload</span>
+                        Tải ảnh
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={async (e) => {
+                            if (e.target.files && e.target.files.length > 0) {
+                              try {
+                                const file = e.target.files[0];
+                                const uploadedUrl = await uploadImageIfSelected(file);
+                                setTempVariant(prev => ({ ...prev, image: uploadedUrl }));
+                              } catch (err: any) {
+                                alert("Lỗi khi tải ảnh: " + err.message);
+                              }
+                            }
+                          }}
+                        />
+                      </label>
+                    </div>
+                  </div>
+
                   <div className="flex justify-end pt-1">
                     <button
                       type="button"
@@ -1487,6 +1843,7 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
                     <table className="w-full text-xs text-left border-collapse">
                       <thead className="bg-surface-container-low text-on-surface-variant border-b border-outline-variant/30 sticky top-0">
                         <tr>
+                          <th className="p-2 font-semibold">Ảnh</th>
                           <th className="p-2 font-semibold">SKU</th>
                           <th className="p-2 font-semibold">Màu sắc</th>
                           <th className="p-2 font-semibold">Kích cỡ</th>
@@ -1498,6 +1855,13 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
                       <tbody className="divide-y divide-outline-variant/20 bg-surface-container-lowest">
                         {formData.variants.map((v, idx) => (
                           <tr key={idx} className="hover:bg-surface-container-low/40">
+                            <td className="p-2">
+                              {v.image ? (
+                                <img src={v.image} alt={v.sku} className="w-8 h-8 object-cover rounded border border-outline-variant/30" />
+                              ) : (
+                                <span className="text-[10px] text-on-surface-variant/40">Không có</span>
+                              )}
+                            </td>
                             <td className="p-2 font-mono text-[10px]">{v.sku}</td>
                             <td className="p-2">{v.color}</td>
                             <td className="p-2">{v.size}</td>

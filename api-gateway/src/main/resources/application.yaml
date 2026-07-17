@@ -9,8 +9,23 @@ spring:
     gateway:
       server:
         webmvc:
+          globalcors:
+            cors-configurations:
+              '[/**]':
+                allowedOrigins:
+                  - "http://localhost:5173"
+                allowedMethods:
+                  - GET
+                  - POST
+                  - PUT
+                  - DELETE
+                  - OPTIONS
+                  - PATCH
+                allowedHeaders:
+                  - "*"
+                allowCredentials: false
           default-filters:
-            - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_UNIQUE
+            - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_FIRST
           routes:
             - id: user-service
               uri: lb://user-service
@@ -26,8 +41,8 @@ spring:
               uri: lb://auth-service
               predicates:
                 - Path=/auth/**
+
 eureka:
   client:
     service-url:
       defaultZone: http://localhost:8761/eureka/
-

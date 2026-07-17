@@ -86,10 +86,13 @@ export const ProductList: React.FC<ProductListProps> = ({
 
     // Apply Search Query Filter
     if (searchQuery) {
+      const query = searchQuery.toLowerCase();
       result = result.filter(p => 
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.material.toLowerCase().includes(searchQuery.toLowerCase())
+        p.name.toLowerCase().includes(query) ||
+        p.description.toLowerCase().includes(query) ||
+        p.material.toLowerCase().includes(query) ||
+        (p.category && p.category.toLowerCase().includes(query)) ||
+        (p.subCategory && p.subCategory.toLowerCase().includes(query))
       );
     }
 
@@ -144,7 +147,7 @@ export const ProductList: React.FC<ProductListProps> = ({
   const endItemIndex = Math.min(currentPage * itemsPerPage, filteredAndSortedProducts.length);
 
   return (
-    <div className="w-full max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-8 md:py-12">
+    <div className="w-full max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-8 md:py-12 animate-fadeInUp">
       {/* Breadcrumbs */}
       <Breadcrumbs 
         paths={[
@@ -156,58 +159,63 @@ export const ProductList: React.FC<ProductListProps> = ({
 
       <div className="flex flex-col md:flex-row gap-gutter">
         {/* Sidebar / Filters (Desktop) */}
-        <aside className="hidden md:block w-1/4 lg:w-1/5 shrink-0 flex flex-col gap-6 select-none">
-          <div className="flex items-center justify-between">
-            <h2 className="font-headline-sm text-headline-sm text-primary dark:text-primary-fixed font-bold">
-              Bộ lọc
+        <aside className="hidden md:block w-1/4 lg:w-1/5 shrink-0 flex flex-col gap-8 select-none border-r border-outline-variant/15 pr-6">
+          <div className="flex items-center justify-between border-b border-outline-variant/20 pb-4">
+            <h2 className="font-display-serif text-2xl text-primary font-medium">
+              Bộ Lọc
             </h2>
             <button 
               onClick={handleResetFilters}
-              className="text-xs text-secondary dark:text-secondary-fixed hover:underline font-semibold"
+              className="font-mono text-[10px] text-secondary hover:text-accent-hover uppercase tracking-widest font-semibold transition-colors"
             >
               Đặt lại
             </button>
           </div>
 
           {/* Lọc không gian chức năng */}
-          <div className="mb-6 border-b border-outline-variant/30 pb-6">
-            <h3 className="font-label-md text-label-md text-on-surface dark:text-primary-fixed-dim mb-3 uppercase tracking-wider font-semibold">
-              Không gian chức năng
+          <div className="mb-2">
+            <h3 className="font-mono text-[11px] text-primary/80 dark:text-primary-fixed uppercase tracking-widest font-bold mb-4 pb-2 border-b border-outline-variant/10">
+              Không gian
             </h3>
-            <div className="space-y-2.5">
+            <div className="space-y-3">
               {['Tất cả', 'Phòng Khách', 'Phòng Ngủ', 'Bàn Ghế Ăn', 'Đồ Trang Trí'].map(space => (
                 <button
                   key={space}
                   onClick={() => { onCategoryChange(space); setCurrentPage(1); }}
-                  className={`flex items-center gap-3 text-left hover:text-secondary transition-colors w-full focus:outline-none ${
-                    activeCategory === space ? 'text-secondary font-bold' : 'text-on-surface-variant dark:text-tertiary-fixed-dim/80'
-                  }`}
+                  className={`flex items-center justify-between text-left transition-colors w-full focus:outline-none group`}
                 >
-                  <span className="font-body-sm text-body-sm">
+                  <span className={`font-body-sm text-sm transition-all ${
+                    activeCategory === space 
+                      ? 'text-secondary font-semibold font-display-serif italic text-base' 
+                      : 'text-on-surface-variant dark:text-tertiary-fixed-dim/80 group-hover:text-secondary'
+                  }`}>
                     {space}
                   </span>
+                  {activeCategory === space && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-secondary" />
+                  )}
                 </button>
               ))}
             </div>
           </div>
 
           {/* Lọc khoảng giá */}
-          <div className="mb-6 border-b border-outline-variant/30 pb-6">
-            <h3 className="font-label-md text-label-md text-on-surface dark:text-primary-fixed-dim mb-3 uppercase tracking-wider font-semibold">
+          <div className="mb-2">
+            <h3 className="font-mono text-[11px] text-primary/80 dark:text-primary-fixed uppercase tracking-widest font-bold mb-4 pb-2 border-b border-outline-variant/10">
               Khoảng giá (VND)
             </h3>
-            <form onSubmit={handleApplyPrice} className="space-y-3">
+            <form onSubmit={handleApplyPrice} className="space-y-4">
               <div className="flex items-center gap-2">
                 <input 
-                  className="w-full bg-surface-bright dark:bg-surface-container-low border border-outline-variant/60 dark:border-outline-variant/30 rounded-lg px-3 py-2 font-body-sm text-body-sm text-on-surface placeholder:text-outline focus:border-secondary outline-none transition-all" 
+                  className="w-full bg-surface-container-lowest dark:bg-surface-container-low border border-outline-variant/30 rounded-md px-3 py-1.5 font-mono text-xs text-on-surface placeholder:text-outline focus:border-secondary outline-none transition-all" 
                   placeholder="Từ" 
                   type="number"
                   value={minPrice}
                   onChange={(e) => setMinPrice(e.target.value)}
                 />
-                <span className="text-on-surface-variant">-</span>
+                <span className="text-on-surface-variant/50 font-mono text-xs">-</span>
                 <input 
-                  className="w-full bg-surface-bright dark:bg-surface-container-low border border-outline-variant/60 dark:border-outline-variant/30 rounded-lg px-3 py-2 font-body-sm text-body-sm text-on-surface placeholder:text-outline focus:border-secondary outline-none transition-all" 
+                  className="w-full bg-surface-container-lowest dark:bg-surface-container-low border border-outline-variant/30 rounded-md px-3 py-1.5 font-mono text-xs text-on-surface placeholder:text-outline focus:border-secondary outline-none transition-all" 
                   placeholder="Đến" 
                   type="number"
                   value={maxPrice}
@@ -216,28 +224,28 @@ export const ProductList: React.FC<ProductListProps> = ({
               </div>
               <button 
                 type="submit"
-                className="w-full bg-surface-container-high dark:bg-surface-container-low border border-outline-variant/40 text-primary dark:text-primary-fixed font-semibold text-label-md rounded-lg py-2 hover:bg-outline-variant/20 dark:hover:bg-outline-variant/10 transition-colors"
+                className="btn-push-outline w-full py-2 text-xs font-mono tracking-wider"
               >
-                Áp dụng
+                ÁP DỤNG
               </button>
             </form>
           </div>
 
           {/* Lọc thương hiệu */}
-          <div className="mb-6 border-b border-outline-variant/30 pb-6">
-            <h3 className="font-label-md text-label-md text-on-surface dark:text-primary-fixed-dim mb-3 uppercase tracking-wider font-semibold">
+          <div className="mb-2">
+            <h3 className="font-mono text-[11px] text-primary/80 dark:text-primary-fixed uppercase tracking-widest font-bold mb-4 pb-2 border-b border-outline-variant/10">
               Thương hiệu
             </h3>
-            <div className="space-y-2.5">
+            <div className="space-y-3">
               {brands.map(brand => (
                 <label key={brand} className="flex items-center gap-3 cursor-pointer group select-none">
                   <input 
-                    className="w-5 h-5 rounded border-outline-variant/60 text-secondary focus:ring-secondary/20 bg-transparent" 
+                    className="w-4 h-4 rounded border-outline-variant/40 text-secondary focus:ring-secondary/20 bg-transparent cursor-pointer" 
                     type="checkbox"
                     checked={selectedBrands.includes(brand)}
                     onChange={() => handleBrandChange(brand)}
                   />
-                  <span className="font-body-sm text-body-sm text-on-surface-variant dark:text-tertiary-fixed-dim/80 group-hover:text-secondary transition-colors">
+                  <span className="font-body-sm text-sm text-on-surface-variant dark:text-tertiary-fixed-dim/80 group-hover:text-secondary transition-colors">
                     {brand}
                   </span>
                 </label>
@@ -246,31 +254,31 @@ export const ProductList: React.FC<ProductListProps> = ({
           </div>
 
           {/* Lọc đánh giá */}
-          <div className="mb-6 border-b border-outline-variant/30 pb-6">
-            <h3 className="font-label-md text-label-md text-on-surface dark:text-primary-fixed-dim mb-3 uppercase tracking-wider font-semibold">
+          <div className="mb-2">
+            <h3 className="font-mono text-[11px] text-primary/80 dark:text-primary-fixed uppercase tracking-widest font-bold mb-4 pb-2 border-b border-outline-variant/10">
               Đánh giá
             </h3>
-            <div className="space-y-2.5">
+            <div className="space-y-3">
               {[5, 4, 3].map(rating => (
                 <button
                   key={rating}
                   onClick={() => { setMinRating(rating); setCurrentPage(1); }}
-                  className={`flex items-center gap-2 text-left hover:text-secondary transition-colors w-full focus:outline-none ${
-                    minRating === rating ? 'text-secondary font-bold' : 'text-on-surface-variant dark:text-tertiary-fixed-dim/80'
+                  className={`flex items-center justify-between text-left hover:text-secondary transition-colors w-full focus:outline-none ${
+                    minRating === rating ? 'text-secondary font-semibold' : 'text-on-surface-variant dark:text-tertiary-fixed-dim/80'
                   }`}
                 >
-                  <div className="flex text-[#F59E0B]">
+                  <div className="flex text-[#F59E0B] space-x-0.5">
                     {[...Array(5)].map((_, i) => (
                       <Star 
                         key={i} 
-                        className={`w-4 h-4 ${
-                          i < rating ? 'fill-current' : 'opacity-20'
+                        className={`w-3.5 h-3.5 ${
+                          i < rating ? 'fill-current' : 'opacity-15'
                         }`} 
                       />
                     ))}
                   </div>
-                  <span className="font-body-sm text-body-sm">
-                    {rating === 5 ? '' : '& Trở lên'}
+                  <span className="font-mono text-[10px] uppercase tracking-wider text-on-surface-variant/70">
+                    {rating === 5 ? 'Tuyệt đối' : '& Trở lên'}
                   </span>
                 </button>
               ))}
@@ -279,8 +287,8 @@ export const ProductList: React.FC<ProductListProps> = ({
 
           {/* Lọc kích thước */}
           <div>
-            <h3 className="font-label-md text-label-md text-on-surface dark:text-primary-fixed-dim mb-3 uppercase tracking-wider font-semibold">
-              Quy mô / Kích thước
+            <h3 className="font-mono text-[11px] text-primary/80 dark:text-primary-fixed uppercase tracking-widest font-bold mb-4 pb-2 border-b border-outline-variant/10">
+              Quy mô
             </h3>
             <div className="flex flex-wrap gap-2">
               {['Compact', 'Standard', 'Deluxe', 'King'].map(size => (
@@ -290,10 +298,10 @@ export const ProductList: React.FC<ProductListProps> = ({
                     setSelectedSize(selectedSize === size ? null : size); 
                     setCurrentPage(1); 
                   }}
-                  className={`px-3.5 py-2 border rounded-lg font-bold text-label-sm transition-all focus:outline-none ${
+                  className={`px-3 py-1.5 border rounded-lg font-mono text-[10px] uppercase tracking-wider transition-all focus:outline-none ${
                     selectedSize === size
-                      ? 'bg-secondary text-white border-secondary'
-                      : 'bg-surface-container dark:bg-tertiary-container/30 border-outline-variant/40 text-on-surface hover:border-secondary dark:text-tertiary-fixed-dim'
+                      ? 'bg-secondary text-white border-secondary shadow-sm'
+                      : 'bg-transparent border-outline-variant/30 text-on-surface hover:border-secondary hover:text-secondary'
                   }`}
                 >
                   {size}
@@ -304,38 +312,38 @@ export const ProductList: React.FC<ProductListProps> = ({
         </aside>
 
         {/* Mobile Filter Sheet Button */}
-        <div className="md:hidden flex gap-4 items-center justify-between mb-4 px-1">
+        <div className="md:hidden flex gap-4 items-center justify-between mb-6 px-1">
           <button 
             onClick={() => setIsMobileFilterOpen(!isMobileFilterOpen)}
-            className="flex items-center gap-2 px-4 py-2 border border-outline-variant/50 bg-surface-container-lowest dark:bg-tertiary-container rounded-lg font-semibold text-body-sm focus:outline-none"
+            className="flex items-center gap-2 px-4 py-2 border border-outline-variant/40 bg-surface-container-lowest rounded-lg font-mono text-xs uppercase tracking-wider focus:outline-none"
           >
-            <SlidersHorizontal className="w-4 h-4 text-secondary" />
-            <span>Lọc &amp; Sắp Xếp</span>
+            <SlidersHorizontal className="w-3.5 h-3.5 text-secondary" />
+            <span>BỘ LỌC &amp; SẮP XẾP</span>
           </button>
           
           <button 
             onClick={handleResetFilters}
-            className="text-xs text-secondary hover:underline font-semibold"
+            className="font-mono text-[10px] text-secondary hover:underline font-semibold uppercase tracking-widest"
           >
-            Đặt lại bộ lọc
+            Đặt lại
           </button>
         </div>
 
         {/* Product Grid Area */}
         <div className="flex-grow">
           {/* Grid Controls */}
-          <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-6 pb-4 border-b border-outline-variant/30 gap-4">
-            <span className="font-body-md text-body-md text-on-surface-variant dark:text-tertiary-fixed-dim/70">
-              Hiển thị <strong className="text-on-surface dark:text-primary-fixed">{filteredAndSortedProducts.length === 0 ? 0 : startItemIndex}-{endItemIndex}</strong> trong số <strong className="text-on-surface dark:text-primary-fixed">{filteredAndSortedProducts.length}</strong> thiết kế nội thất
+          <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-8 pb-4 border-b border-outline-variant/15 gap-4">
+            <span className="font-mono text-[11px] text-on-surface-variant dark:text-tertiary-fixed-dim/70 uppercase tracking-widest">
+              Hiển thị <span className="text-primary font-bold">{filteredAndSortedProducts.length === 0 ? 0 : startItemIndex}-{endItemIndex}</span> trong số <span className="text-primary font-bold">{filteredAndSortedProducts.length}</span> thiết kế
             </span>
             <div className="flex items-center gap-3">
-              <label className="font-body-sm text-body-sm text-on-surface-variant dark:text-tertiary-fixed-dim/70 hidden sm:block">
-                Sắp xếp theo:
+              <label className="font-mono text-[10px] text-on-surface-variant dark:text-tertiary-fixed-dim/70 uppercase tracking-widest hidden sm:block">
+                Sắp xếp:
               </label>
               <select 
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="bg-surface-container-lowest dark:bg-tertiary-container border border-outline-variant/60 dark:border-outline-variant/30 rounded-lg px-4 py-2 font-semibold text-body-sm text-on-surface dark:text-primary-fixed-dim focus:border-secondary outline-none cursor-pointer"
+                className="bg-surface-container-lowest dark:bg-surface-container border border-outline-variant/30 rounded-md px-3 py-1.5 font-mono text-xs text-primary focus:border-secondary outline-none cursor-pointer"
               >
                 <option value="Phổ biến nhất">Phổ biến nhất</option>
                 <option value="Giá: Thấp đến Cao">Giá: Thấp đến Cao</option>
@@ -347,22 +355,22 @@ export const ProductList: React.FC<ProductListProps> = ({
 
           {/* Catalog products grid */}
           {paginatedProducts.length === 0 ? (
-            <div className="text-center py-20 bg-surface-container-low dark:bg-tertiary-container/10 rounded-2xl p-8">
-              <p className="text-body-lg font-bold text-primary dark:text-primary-fixed-dim">
+            <div className="text-center py-20 bg-surface-container-low dark:bg-tertiary-container/5 rounded-2xl p-8 border border-outline-variant/15">
+              <p className="font-display-serif text-2xl font-medium text-primary mb-2">
                 Không tìm thấy sản phẩm phù hợp
               </p>
-              <p className="text-body-sm text-on-surface-variant dark:text-tertiary-fixed-dim/60 mt-1">
+              <p className="text-body-sm text-on-surface-variant/80 mt-1">
                 Hãy thử nới lỏng bộ lọc giá hoặc chọn các từ khóa tìm kiếm chung hơn.
               </p>
               <button 
                 onClick={handleResetFilters}
-                className="mt-6 bg-secondary text-white font-semibold text-label-md px-6 py-2.5 rounded-lg shadow"
+                className="mt-6 btn-push text-label-md px-6 py-2.5"
               >
                 Xóa tất cả bộ lọc
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-gutter mb-12">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-gutter mb-12">
               {paginatedProducts.map((product) => (
                 <ProductCard
                   key={product.id}
@@ -378,13 +386,13 @@ export const ProductList: React.FC<ProductListProps> = ({
 
           {/* Pagination triggers */}
           {totalPages > 1 && (
-            <div className="flex justify-center items-center space-x-2 mt-8 select-none">
+            <div className="flex justify-center items-center space-x-2 mt-12 select-none border-t border-outline-variant/10 pt-8">
               <button 
                 onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                 disabled={currentPage === 1}
-                className="w-10 h-10 rounded-lg border border-outline-variant/60 dark:border-outline-variant/30 flex items-center justify-center text-outline hover:border-secondary hover:text-secondary disabled:opacity-30 disabled:cursor-not-allowed transition-colors focus:outline-none"
+                className="w-9 h-9 rounded-lg border border-outline-variant/30 flex items-center justify-center text-outline hover:border-secondary hover:text-secondary disabled:opacity-20 disabled:cursor-not-allowed transition-colors focus:outline-none"
               >
-                <ChevronLeft className="w-5 h-5" />
+                <ChevronLeft className="w-4 h-4" />
               </button>
               
               {[...Array(totalPages)].map((_, i) => {
@@ -393,10 +401,10 @@ export const ProductList: React.FC<ProductListProps> = ({
                   <button 
                     key={pageNumber}
                     onClick={() => setCurrentPage(pageNumber)}
-                    className={`w-10 h-10 rounded-lg font-bold text-body-sm flex items-center justify-center transition-colors focus:outline-none ${
+                    className={`w-9 h-9 rounded-lg font-mono text-xs flex items-center justify-center transition-colors focus:outline-none ${
                       currentPage === pageNumber
-                        ? 'bg-secondary text-white border-2 border-secondary'
-                        : 'border border-outline-variant/60 dark:border-outline-variant/30 text-on-surface hover:border-secondary dark:text-tertiary-fixed-dim'
+                        ? 'bg-secondary text-white border border-secondary shadow-sm'
+                        : 'border border-outline-variant/30 text-on-surface hover:border-secondary'
                     }`}
                   >
                     {pageNumber}
@@ -407,9 +415,9 @@ export const ProductList: React.FC<ProductListProps> = ({
               <button 
                 onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                 disabled={currentPage === totalPages}
-                className="w-10 h-10 rounded-lg border border-outline-variant/60 dark:border-outline-variant/30 flex items-center justify-center text-outline hover:border-secondary hover:text-secondary disabled:opacity-30 disabled:cursor-not-allowed transition-colors focus:outline-none"
+                className="w-9 h-9 rounded-lg border border-outline-variant/30 flex items-center justify-center text-outline hover:border-secondary hover:text-secondary disabled:opacity-20 disabled:cursor-not-allowed transition-colors focus:outline-none"
               >
-                <ChevronRight className="w-5 h-5" />
+                <ChevronRight className="w-4 h-4" />
               </button>
             </div>
           )}
@@ -418,15 +426,15 @@ export const ProductList: React.FC<ProductListProps> = ({
 
       {/* Mobile Filters Drawer Overlay */}
       {isMobileFilterOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-end md:hidden">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex justify-end md:hidden">
           <div className="w-[80%] max-w-[320px] h-full bg-surface dark:bg-tertiary-container p-6 overflow-y-auto flex flex-col gap-6 shadow-2xl animate-slideLeft">
             <div className="flex justify-between items-center border-b border-outline-variant/30 pb-3">
-              <h2 className="font-headline-sm text-headline-sm font-bold text-primary dark:text-primary-fixed">
+              <h2 className="font-display-serif text-xl font-medium text-primary">
                 Lọc Sản Phẩm
               </h2>
               <button 
                 onClick={() => setIsMobileFilterOpen(false)}
-                className="text-outline text-sm font-bold p-1 rounded hover:bg-surface-container"
+                className="text-outline font-mono text-xs uppercase tracking-wider p-1 rounded hover:bg-surface-container"
               >
                 Đóng
               </button>
@@ -434,18 +442,18 @@ export const ProductList: React.FC<ProductListProps> = ({
 
             {/* Lọc không gian chức năng */}
             <div>
-              <h3 className="font-label-md text-label-md text-on-surface dark:text-primary-fixed-dim mb-3 uppercase tracking-wider font-semibold">
-                Không gian chức năng
+              <h3 className="font-mono text-[10px] text-primary/80 dark:text-primary-fixed-dim mb-3 uppercase tracking-widest font-bold">
+                Không gian
               </h3>
               <div className="flex flex-wrap gap-2">
                 {['Tất cả', 'Phòng Khách', 'Phòng Ngủ', 'Bàn Ghế Ăn', 'Đồ Trang Trí'].map(space => (
                   <button
                     key={space}
                     onClick={() => { onCategoryChange(space); setCurrentPage(1); setIsMobileFilterOpen(false); }}
-                    className={`px-3 py-1.5 border rounded-lg font-semibold text-label-sm transition-all focus:outline-none ${
+                    className={`px-3 py-1.5 border rounded-lg font-mono text-[9px] uppercase tracking-wider transition-all focus:outline-none ${
                       activeCategory === space
                         ? 'bg-secondary text-white border-secondary'
-                        : 'bg-surface-container dark:bg-tertiary-container/30 border-outline-variant/40 text-on-surface hover:border-secondary dark:text-tertiary-fixed-dim'
+                        : 'bg-transparent border-outline-variant/40 text-on-surface hover:border-secondary'
                     }`}
                   >
                     {space}
@@ -456,20 +464,20 @@ export const ProductList: React.FC<ProductListProps> = ({
 
             {/* Price Inputs */}
             <div>
-              <h3 className="font-label-md text-label-md text-on-surface dark:text-primary-fixed-dim mb-3 uppercase tracking-wider font-semibold">
+              <h3 className="font-mono text-[10px] text-primary/80 dark:text-primary-fixed-dim mb-3 uppercase tracking-widest font-bold">
                 Khoảng giá (VND)
               </h3>
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2 mb-3">
                 <input 
-                  className="w-full bg-surface-bright dark:bg-surface-container-low border border-outline-variant/60 rounded-lg px-3 py-2 font-body-sm text-body-sm text-on-surface" 
+                  className="w-full bg-surface-container-lowest border border-outline-variant/30 rounded px-2.5 py-1.5 font-mono text-xs text-on-surface" 
                   placeholder="Từ" 
                   type="number"
                   value={minPrice}
                   onChange={(e) => setMinPrice(e.target.value)}
                 />
-                <span className="text-on-surface-variant">-</span>
+                <span className="text-on-surface-variant/40 font-mono text-xs">-</span>
                 <input 
-                  className="w-full bg-surface-bright dark:bg-surface-container-low border border-outline-variant/60 rounded-lg px-3 py-2 font-body-sm text-body-sm text-on-surface" 
+                  className="w-full bg-surface-container-lowest border border-outline-variant/30 rounded px-2.5 py-1.5 font-mono text-xs text-on-surface" 
                   placeholder="Đến" 
                   type="number"
                   value={maxPrice}
@@ -478,27 +486,27 @@ export const ProductList: React.FC<ProductListProps> = ({
               </div>
               <button 
                 onClick={(e) => { handleApplyPrice(e); setIsMobileFilterOpen(false); }}
-                className="w-full bg-secondary text-white font-semibold text-label-md rounded-lg py-2 transition-colors"
+                className="w-full btn-push py-2 text-xs font-mono tracking-wider"
               >
-                Áp dụng
+                ÁP DỤNG
               </button>
             </div>
 
             {/* Brand checkboxes */}
             <div>
-              <h3 className="font-label-md text-label-md text-on-surface dark:text-primary-fixed-dim mb-3 uppercase tracking-wider font-semibold">
+              <h3 className="font-mono text-[10px] text-primary/80 dark:text-primary-fixed-dim mb-3 uppercase tracking-widest font-bold">
                 Thương hiệu
               </h3>
-              <div className="space-y-2.5">
+              <div className="space-y-3">
                 {brands.map(brand => (
                   <label key={brand} className="flex items-center gap-3 cursor-pointer select-none">
                     <input 
-                      className="w-5 h-5 rounded border-outline-variant text-secondary focus:ring-secondary/20" 
+                      className="w-4 h-4 rounded border-outline-variant text-secondary focus:ring-secondary/20" 
                       type="checkbox"
                       checked={selectedBrands.includes(brand)}
                       onChange={() => handleBrandChange(brand)}
                     />
-                    <span className="font-body-sm text-body-sm text-on-surface-variant dark:text-tertiary-fixed-dim/80">
+                    <span className="font-body-sm text-sm text-on-surface-variant dark:text-tertiary-fixed-dim/80">
                       {brand}
                     </span>
                   </label>
@@ -508,30 +516,30 @@ export const ProductList: React.FC<ProductListProps> = ({
 
             {/* Rating options */}
             <div>
-              <h3 className="font-label-md text-label-md text-on-surface dark:text-primary-fixed-dim mb-3 uppercase tracking-wider font-semibold">
+              <h3 className="font-mono text-[10px] text-primary/80 dark:text-primary-fixed-dim mb-3 uppercase tracking-widest font-bold">
                 Đánh giá
               </h3>
-              <div className="space-y-2.5">
+              <div className="space-y-3">
                 {[5, 4, 3].map(rating => (
                   <button
                     key={rating}
                     onClick={() => { setMinRating(rating); setIsMobileFilterOpen(false); setCurrentPage(1); }}
-                    className={`flex items-center gap-2 text-left w-full focus:outline-none ${
+                    className={`flex items-center justify-between text-left w-full focus:outline-none ${
                       minRating === rating ? 'text-secondary font-bold' : 'text-on-surface-variant dark:text-tertiary-fixed-dim/80'
                     }`}
                   >
-                    <div className="flex text-[#F59E0B]">
+                    <div className="flex text-[#F59E0B] space-x-0.5">
                       {[...Array(5)].map((_, i) => (
                         <Star 
                           key={i} 
                           className={`w-3.5 h-3.5 ${
-                            i < rating ? 'fill-current' : 'opacity-20'
+                            i < rating ? 'fill-current' : 'opacity-15'
                           }`} 
                         />
                       ))}
                     </div>
-                    <span className="font-body-sm text-body-sm">
-                      {rating === 5 ? '' : '& Trở lên'}
+                    <span className="font-mono text-[9px] uppercase tracking-wider text-on-surface-variant/70">
+                      {rating === 5 ? 'Tuyệt đối' : '& Trở lên'}
                     </span>
                   </button>
                 ))}
@@ -540,7 +548,7 @@ export const ProductList: React.FC<ProductListProps> = ({
 
             {/* Size filters */}
             <div>
-              <h3 className="font-label-md text-label-md text-on-surface dark:text-primary-fixed-dim mb-3 uppercase tracking-wider font-semibold">
+              <h3 className="font-mono text-[10px] text-primary/80 dark:text-primary-fixed-dim mb-3 uppercase tracking-widest font-bold">
                 Kích thước
               </h3>
               <div className="flex flex-wrap gap-2">
@@ -552,10 +560,10 @@ export const ProductList: React.FC<ProductListProps> = ({
                       setIsMobileFilterOpen(false);
                       setCurrentPage(1); 
                     }}
-                    className={`px-3 py-2 border rounded-lg font-bold text-label-sm transition-all focus:outline-none ${
+                    className={`px-3 py-1.5 border rounded-lg font-mono text-[9px] uppercase tracking-wider transition-all focus:outline-none ${
                       selectedSize === size
                         ? 'bg-secondary text-white border-secondary'
-                        : 'bg-surface-container dark:bg-tertiary-container/30 border-outline-variant text-on-surface hover:border-secondary dark:text-tertiary-fixed-dim'
+                        : 'bg-transparent border-outline-variant text-on-surface hover:border-secondary'
                     }`}
                   >
                     {size}
@@ -566,7 +574,7 @@ export const ProductList: React.FC<ProductListProps> = ({
 
             <button
               onClick={() => { handleResetFilters(); setIsMobileFilterOpen(false); }}
-              className="mt-auto w-full bg-surface-container border border-outline-variant text-on-surface font-semibold py-2.5 rounded-lg text-body-sm"
+              className="mt-auto w-full bg-surface-container border border-outline-variant text-on-surface font-semibold py-2.5 rounded-lg text-body-sm font-mono text-xs uppercase tracking-wider"
             >
               Xóa tất cả lọc
             </button>

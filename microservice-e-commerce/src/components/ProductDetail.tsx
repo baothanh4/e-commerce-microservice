@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import type { Product } from '../types';
 import { Breadcrumbs } from './Breadcrumbs';
 import { ProductCard } from './ProductCard';
@@ -33,6 +33,47 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({
     product && product.sizes && product.sizes.length > 0 ? product.sizes[0] : ''
   );
 
+  // Find matching variant based on selected attributes
+  const matchingVariant = useMemo(() => {
+    if (!product || !product.variants) return null;
+    return product.variants.find(v => 
+      v.color.toLowerCase() === selectedColor.toLowerCase() &&
+      v.size.toLowerCase() === selectedSize.toLowerCase()
+    );
+  }, [product, selectedColor, selectedSize]);
+
+  // Handle sync when clicking thumbnail images
+  const handleThumbnailClick = (img: string) => {
+    setActiveImage(img);
+    if (product && product.variants) {
+      const matchingVar = product.variants.find(v => v.image === img);
+      if (matchingVar) {
+        if (matchingVar.color) {
+          setSelectedColor(matchingVar.color);
+        }
+        if (matchingVar.size) {
+          setSelectedSize(matchingVar.size);
+        }
+      }
+    }
+  };
+
+  // Determine current price to display
+  const displayPrice = useMemo(() => {
+    if (matchingVariant) return matchingVariant.price;
+    return product ? product.price : 0;
+  }, [matchingVariant, product]);
+
+  // Determine variant image
+  const variantImage = matchingVariant ? matchingVariant.image : null;
+
+  // Auto-switch main image when selecting a variant that has its own image
+  useEffect(() => {
+    if (variantImage) {
+      setActiveImage(variantImage);
+    }
+  }, [variantImage]);
+
   if (!product) {
     return (
       <div className="text-center py-20">
@@ -57,11 +98,25 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({
     .filter(p => p.id !== product.id && (p.category === product.category || p.subCategory === product.subCategory))
     .slice(0, 4);
 
-  // Generate thumbnail gallery
-  const galleryImages = [
-    product.image,
-    ...(product.gallery || [])
-  ].slice(0, 4);
+  // Generate thumbnail gallery (including product image, gallery, and variant images)
+  const galleryImages = (() => {
+    const images = new Set<string>();
+    if (product.image) images.add(product.image);
+    
+    if (product.gallery && product.gallery.length > 0) {
+      product.gallery.forEach(img => {
+        if (img) images.add(img);
+      });
+    }
+    
+    if (product.variants && product.variants.length > 0) {
+      product.variants.forEach(v => {
+        if (v.image) images.add(v.image);
+      });
+    }
+    
+    return Array.from(images).slice(0, 4);
+  })();
 
   const handleBuyNow = () => {
     onAddToCart(product, quantity, selectedColor, selectedSize);
@@ -85,11 +140,11 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-24">
         {/* Left Column: Image Gallery */}
         <div className="flex flex-col gap-4">
-          <div className="w-full aspect-[4/3] rounded-lg overflow-hidden bg-surface-container-low relative border border-outline-variant/30">
+          <div className="w-full aspect-[4/3] rounded-lg overflow-hidden bg-surface-container-low relative border border-outline-variant/30 flex items-center justify-center">
             <img 
               src={activeImage} 
               alt={product.name} 
-              className="w-full h-full object-cover transition-all duration-300"
+              className="max-w-full max-h-full object-contain transition-all duration-300"
             />
             {(() => {
               const isNew = (() => {
@@ -129,7 +184,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({
             {galleryImages.map((img, i) => (
               <button
                 key={i}
-                onClick={() => setActiveImage(img)}
+                onClick={() => handleThumbnailClick(img)}
                 className={`aspect-square rounded-lg overflow-hidden border-2 cursor-pointer transition-colors focus:outline-none ${
                   activeImage === img ? 'border-primary dark:border-secondary' : 'border-outline-variant/40 hover:border-outline-variant/80'
                 }`}
@@ -168,7 +223,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({
 
             <div className="flex items-baseline gap-4 mb-6">
               <span className="font-display-lg-mobile text-[28px] text-secondary dark:text-secondary-fixed font-bold">
-                {formatPrice(product.price)}
+                {formatPrice(displayPrice)}
               </span>
               {product.originalPrice && (
                 <span className="font-body-md text-body-md text-on-surface-variant line-through opacity-70">

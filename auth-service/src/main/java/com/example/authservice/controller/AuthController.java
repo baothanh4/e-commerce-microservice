@@ -13,8 +13,10 @@ import org.springframework.web.bind.annotation.*;
 
 import com.example.authservice.dto.response.UserProfileDto;
 import org.springframework.security.core.Authentication;
+import com.example.authservice.dto.request.ForgotPasswordRequest;
+import com.example.authservice.dto.request.ResetPasswordRequest;
+import com.example.authservice.dto.response.ForgotPasswordResponse;
 
-@CrossOrigin(origins = "*", allowedHeaders = "*")
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
@@ -59,5 +61,17 @@ public class AuthController {
         }
         String email = authentication.getName();
         return ResponseEntity.ok(authService.updateProfile(email, request));
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ForgotPasswordResponse> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        ForgotPasswordResponse response = authService.forgotPassword(request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<MessageResponse> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        String msg = authService.resetPassword(request);
+        return ResponseEntity.ok(new MessageResponse(msg));
     }
 }

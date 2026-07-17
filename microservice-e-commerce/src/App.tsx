@@ -11,7 +11,9 @@ import { LoginPage } from './components/LoginPage';
 import { RegisterPage } from './components/RegisterPage';
 import { ProfilePage } from './components/ProfilePage';
 import { ManagerDashboard } from './components/ManagerDashboard';
-import type { Product, CartItem } from './types';
+import { CheckoutPage } from './components/CheckoutPage';
+import { OrderDetailPage } from './components/OrderDetailPage';
+import type { Product, CartItem, Order } from './types';
 import { Sparkles, ArrowRight } from 'lucide-react';
 
 
@@ -22,74 +24,106 @@ function App() {
   // Dynamic products state initialized with empty array
   const [products, setProducts] = useState<Product[]>([]);
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const response = await fetch('http://localhost:8080/products');
-        if (response.ok) {
-          const data = await response.json();
-          if (data && data.length > 0) {
-            const mappedData: Product[] = data.map((p: any) => {
-              return {
-                id: p.id,
-                name: p.name,
-                price: p.price,
-                originalPrice: p.price * 1.2,
-                rating: 4.8,
-                badge: p.stock === 0 ? "Hết hàng" : "",
-                category: p.category,
-                subCategory: p.subCategory || (p.category === "Nội thất" ? "Phòng Khách" : "Đồ Trang Trí"),
-                brand: "Lusso",
-                material: "Cao cấp",
-                description: p.description || "",
-                image: p.image || "https://via.placeholder.com/150",
-                sizes: ["Compact", "Standard", "Deluxe"],
-                colors: [
+  const fetchProducts = async () => {
+    try {
+      const response = await fetch('http://localhost:8080/products');
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.length > 0) {
+          const mappedData: Product[] = data.map((p: any) => {
+            const variants = p.variants || [];
+            
+            // Extract unique sizes from variants
+            const uniqueSizes = Array.from(new Set(variants.map((v: any) => v.size).filter(Boolean))) as string[];
+            const sizes = uniqueSizes.length > 0 ? uniqueSizes : ["Compact", "Standard", "Deluxe"];
+            
+            // Extract unique colors from variants and map to hex codes
+            const colorMap: Record<string, string> = {
+              "Classic Navy": "#1E3A8A",
+              "Matte Black": "#1F2937",
+              "Natural Oak": "#D7A15C",
+              "Tan Brown": "#8B5A2B",
+              "Charcoal Black": "#36454F",
+              "Đen": "#000000",
+              "Trắng": "#FFFFFF",
+              "Xám": "#808080",
+              "Đỏ": "#FF0000",
+              "Xanh dương": "#3B82F6",
+              "Vàng": "#FBBF24",
+              "Xanh lá": "#10B981",
+              "Hồng": "#EC4899",
+              "Cam": "#F97316",
+              "Nâu": "#78350F",
+            };
+            
+            const uniqueColors = Array.from(new Set(variants.map((v: any) => v.color).filter(Boolean))) as string[];
+            const colors = uniqueColors.length > 0
+              ? uniqueColors.map(c => ({ name: c, value: colorMap[c] || "#CCCCCC" }))
+              : [
                   { name: "Classic Navy", value: "#1E3A8A" },
                   { name: "Matte Black", value: "#1F2937" }
-                ],
-                specs: [
-                  { label: "Kích thước", value: "Standard" },
-                  { label: "Chất liệu", value: "Cao cấp" },
-                  { label: "Bảo hành", value: "12 tháng" }
-                ],
-                highlights: ["Chất liệu cao cấp", "Thiết kế hiện đại"],
-                sku: p.sku,
-                stock: p.stock,
-                createdAt: p.createdAt
-              };
-            });
+                ];
 
-            // Xếp các sản phẩm mới thêm (trong vòng 1 tuần) lên đầu, mới hơn xếp trước
-            const sortedData = [...mappedData].sort((a, b) => {
-              const isNew = (dateStr?: string) => {
-                if (!dateStr) return false;
-                const createdDate = new Date(dateStr);
-                const oneWeekAgo = new Date();
-                oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-                return createdDate > oneWeekAgo;
-              };
+            return {
+              id: p.id,
+              name: p.name,
+              price: p.price,
+              originalPrice: p.price * 1.2,
+              rating: 4.8,
+              badge: p.stock === 0 ? "Hết hàng" : "",
+              category: p.category,
+              subCategory: p.subCategory || (p.category === "Nội thất" ? "Phòng Khách" : "Đồ Trang Trí"),
+              brand: "Lusso",
+              material: "Cao cấp",
+              description: p.description || "",
+              image: p.image || "https://via.placeholder.com/150",
+              sizes,
+              colors,
+              specs: [
+                { label: "Kích thước", value: "Standard" },
+                { label: "Chất liệu", value: "Cao cấp" },
+                { label: "Bảo hành", value: "12 tháng" }
+              ],
+              highlights: ["Chất liệu cao cấp", "Thiết kế hiện đại"],
+              sku: p.sku,
+              stock: p.stock,
+              createdAt: p.createdAt,
+              variants
+            };
+          });
 
-              const aNew = isNew(a.createdAt);
-              const bNew = isNew(b.createdAt);
+          // Xếp các sản phẩm mới thêm (trong vòng 1 tuần) lên đầu, mới hơn xếp trước
+          const sortedData = [...mappedData].sort((a, b) => {
+            const isNew = (dateStr?: string) => {
+              if (!dateStr) return false;
+              const createdDate = new Date(dateStr);
+              const oneWeekAgo = new Date();
+              oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+              return createdDate > oneWeekAgo;
+            };
 
-              if (aNew && !bNew) return -1;
-              if (!aNew && bNew) return 1;
+            const aNew = isNew(a.createdAt);
+            const bNew = isNew(b.createdAt);
 
-              // Nếu cả 2 cùng mới hoặc cùng cũ, xếp theo ngày mới nhất trước, hoặc theo ID giảm dần
-              if (a.createdAt && b.createdAt) {
-                return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-              }
-              return b.id - a.id;
-            });
+            if (aNew && !bNew) return -1;
+            if (!aNew && bNew) return 1;
 
-            setProducts(sortedData);
-          }
+            // Nếu cả 2 cùng mới hoặc cùng cũ, xếp theo ngày mới nhất trước, hoặc theo ID giảm dần
+            if (a.createdAt && b.createdAt) {
+              return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+            }
+            return b.id - a.id;
+          });
+
+          setProducts(sortedData);
         }
-      } catch (error) {
-        console.error("Lỗi khi tải sản phẩm từ backend:", error);
       }
-    };
+    } catch (error) {
+      console.error("Lỗi khi tải sản phẩm từ backend:", error);
+    }
+  };
+
+  useEffect(() => {
     fetchProducts();
   }, []);
 
@@ -103,29 +137,274 @@ function App() {
   const handleLoginSuccess = (user: { name: string; email: string; token: string; role: string }) => {
     localStorage.setItem('currentUser', JSON.stringify(user));
     setCurrentUser(user);
+    // Switch to user cart & favorites
+    const savedCart = localStorage.getItem(`cart_${user.email}`);
+    setCartItems(savedCart ? JSON.parse(savedCart) : []);
+    const savedFavs = localStorage.getItem(`favorites_${user.email}`);
+    setFavorites(savedFavs ? JSON.parse(savedFavs) : []);
   };
 
   const handleLogout = () => {
     localStorage.removeItem('currentUser');
+    localStorage.removeItem('cart');
+    localStorage.removeItem('favorites');
     setCurrentUser(null);
+    // Switch to guest cart & favorites
+    const savedCart = localStorage.getItem('cart_guest');
+    setCartItems(savedCart ? JSON.parse(savedCart) : []);
+    const savedFavs = localStorage.getItem('favorites_guest');
+    setFavorites(savedFavs ? JSON.parse(savedFavs) : []);
     setCurrentView('home');
   };
 
   // Navigation Routing States
-  const [currentView, setCurrentView] = useState<'home' | 'products' | 'detail' | 'login' | 'register' | 'profile' | 'dashboard'>('home');
-  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
+  const [currentView, setCurrentView] = useState<'home' | 'products' | 'detail' | 'login' | 'register' | 'profile' | 'dashboard' | 'checkout' | 'order-detail'>(() => {
+    const savedView = localStorage.getItem('currentView');
+    if (savedView) return savedView as any;
+    
+    // Fallback: If logged in as ADMIN, default to dashboard
+    const savedUser = localStorage.getItem('currentUser');
+    if (savedUser) {
+      const user = JSON.parse(savedUser);
+      if (user.role === 'ADMIN') return 'dashboard';
+    }
+    return 'home';
+  });
+  const [selectedProductId, setSelectedProductId] = useState<number | null>(() => {
+    const savedId = localStorage.getItem('selectedProductId');
+    return savedId ? Number(savedId) : null;
+  });
   const [sortBy, setSortBy] = useState('Phổ biến nhất');
+
+  // Orders State & LocalStorage Synchronization
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(() => {
+    const savedSelected = localStorage.getItem('selectedOrder');
+    return savedSelected ? JSON.parse(savedSelected) : null;
+  });
+  const [userId, setUserId] = useState<number | null>(null);
+
+  // Sync profile details and load user orders from database
+  useEffect(() => {
+    if (!currentUser) {
+      setUserId(null);
+      return;
+    }
+
+    const fetchUserProfileAndOrders = async () => {
+      try {
+        const profileRes = await fetch('http://localhost:8080/auth/profile', {
+          headers: { 'Authorization': `Bearer ${currentUser.token}` }
+        });
+        if (!profileRes.ok) return;
+        const profileData = await profileRes.json();
+        const id = profileData.id;
+        if (!id) return;
+        
+        setUserId(id);
+
+        // Fetch user orders from database
+        const ordersRes = await fetch(`http://localhost:8080/users/orders/user/${id}`);
+        if (ordersRes.ok) {
+          const dbOrders = await ordersRes.json();
+          const dbOrderIds = new Set(dbOrders.map((o: any) => o.id));
+
+          // Retry syncing local-only orders that were not saved to DB (backend was down)
+          const localRaw = localStorage.getItem('luxe_orders');
+          const localOrders: Order[] = localRaw ? JSON.parse(localRaw) : [];
+          const pendingSync = localOrders.filter(lo => !dbOrderIds.has(lo.id));
+
+          for (const pending of pendingSync) {
+            try {
+              const payload = {
+                id: pending.id,
+                userId: id,
+                subtotal: pending.subtotal,
+                total: pending.total,
+                receiverName: pending.receiverName,
+                phoneNumber: pending.phoneNumber,
+                address: pending.address,
+                paymentMethod: pending.paymentMethod,
+                cardNumber: pending.cardInfo?.cardNumber || null,
+                cardName: pending.cardInfo?.cardName || null,
+                expiryDate: pending.cardInfo?.expiryDate || null,
+                status: pending.status,
+                createdAt: pending.createdAt,
+                items: pending.items.map((item) => ({
+                  productId: item.product.id,
+                  productName: item.product.name,
+                  price: item.product.price,
+                  quantity: item.quantity,
+                  selectedColor: item.selectedColor || null,
+                  selectedSize: item.selectedSize || null,
+                  image: item.product.image || null,
+                  sku: item.product.sku || 'N/A'
+                }))
+              };
+              await fetch('http://localhost:8080/users/orders', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+              });
+              console.log(`Đã đồng bộ đơn hàng chờ lên server: ${pending.id}`);
+            } catch (syncErr) {
+              console.warn(`Không thể đồng bộ đơn hàng ${pending.id}:`, syncErr);
+            }
+          }
+
+          // After retry syncs, re-fetch the updated list from DB
+          const updatedRes = await fetch(`http://localhost:8080/users/orders/user/${id}`);
+          const updatedOrders = updatedRes.ok ? await updatedRes.json() : dbOrders;
+
+          // Map backend entities to frontend Order type structure
+          const mappedOrders = updatedOrders.map((o: any) => ({
+            id: o.id,
+            items: o.items.map((item: any) => ({
+              product: {
+                id: item.productId,
+                name: item.productName,
+                price: item.price,
+                image: item.image,
+                sku: item.sku
+              },
+              quantity: item.quantity,
+              selectedColor: item.selectedColor,
+              selectedSize: item.selectedSize
+            })),
+            subtotal: o.subtotal,
+            total: o.total,
+            receiverName: o.receiverName,
+            phoneNumber: o.phoneNumber,
+            address: o.address,
+            paymentMethod: o.paymentMethod,
+            cardInfo: o.paymentMethod === 'CARD' ? {
+              cardNumber: o.cardNumber,
+              cardName: o.cardName,
+              expiryDate: o.expiryDate
+            } : undefined,
+            status: o.status,
+            createdAt: o.createdAt
+          }));
+          setOrders(mappedOrders);
+          localStorage.setItem('luxe_orders', JSON.stringify(mappedOrders));
+        }
+      } catch (err) {
+        console.error("Lỗi đồng bộ hồ sơ và đơn hàng từ server:", err);
+      }
+    };
+
+    fetchUserProfileAndOrders();
+  }, [currentUser]);
+
+  useEffect(() => {
+    const savedOrders = localStorage.getItem('luxe_orders');
+    if (savedOrders) {
+      const parsed = JSON.parse(savedOrders);
+      // Filter out mock orders starting with 'NX-' to sanitize local storage
+      const filtered = parsed.filter((o: any) => !o.id.startsWith('NX-'));
+      setOrders(filtered);
+      localStorage.setItem('luxe_orders', JSON.stringify(filtered));
+    } else {
+      setOrders([]);
+      localStorage.setItem('luxe_orders', JSON.stringify([]));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (selectedOrder) {
+      localStorage.setItem('selectedOrder', JSON.stringify(selectedOrder));
+    } else {
+      localStorage.removeItem('selectedOrder');
+    }
+  }, [selectedOrder]);
+
+  const handlePlaceOrder = async (newOrder: Order) => {
+    // Generate backend order model payload
+    const orderPayload = {
+      id: newOrder.id,
+      userId: userId || 1, // Fallback to id = 1 if userId is missing
+      subtotal: newOrder.subtotal,
+      total: newOrder.total,
+      receiverName: newOrder.receiverName,
+      phoneNumber: newOrder.phoneNumber,
+      address: newOrder.address,
+      paymentMethod: newOrder.paymentMethod,
+      cardNumber: newOrder.cardInfo?.cardNumber || null,
+      cardName: newOrder.cardInfo?.cardName || null,
+      expiryDate: newOrder.cardInfo?.expiryDate || null,
+      status: newOrder.status,
+      createdAt: newOrder.createdAt,
+      items: newOrder.items.map((item) => {
+        // Find matching variant if it exists to get exact price, image and sku
+        const variants = item.product.variants || [];
+        const variant = variants.find(v => 
+          v.color.toLowerCase() === item.selectedColor?.toLowerCase() &&
+          v.size.toLowerCase() === item.selectedSize?.toLowerCase()
+        );
+        const price = variant ? variant.price : item.product.price;
+        const image = variant && variant.image ? variant.image : item.product.image;
+        const sku = variant?.sku || item.product.sku || 'N/A';
+        
+        return {
+          productId: item.product.id,
+          productName: item.product.name,
+          price: price,
+          quantity: item.quantity,
+          selectedColor: item.selectedColor || null,
+          selectedSize: item.selectedSize || null,
+          image: image,
+          sku: sku
+        };
+      })
+    };
+
+    try {
+      const response = await fetch('http://localhost:8080/users/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(orderPayload)
+      });
+      if (response.ok) {
+        console.log("✅ Đã lưu đơn hàng lên server thành công:", newOrder.id);
+      } else {
+        const errText = await response.text();
+        console.warn(`⚠️ Server trả lỗi khi lưu đơn hàng (${response.status}): ${errText}. Lưu local dự phòng.`);
+      }
+    } catch (err) {
+      console.warn("⚠️ Không kết nối được tới user-service. Đơn hàng sẽ được đồng bộ lần sau khi đăng nhập lại:", err);
+    }
+
+    const updated = [newOrder, ...orders];
+    setOrders(updated);
+    localStorage.setItem('luxe_orders', JSON.stringify(updated));
+    
+    // Clear cart in both state and localStorage
+    setCartItems([]);
+    const savedUser = localStorage.getItem('currentUser');
+    const user = savedUser ? JSON.parse(savedUser) : null;
+    const key = user ? `cart_${user.email}` : 'cart_guest';
+    localStorage.setItem(key, JSON.stringify([]));
+
+    setSelectedOrder(newOrder);
+    setCurrentView('order-detail');
+  };
 
   // Cart state persisted in localStorage
   const [cartItems, setCartItems] = useState<CartItem[]>(() => {
-    const savedCart = localStorage.getItem('cart');
+    const savedUser = localStorage.getItem('currentUser');
+    const user = savedUser ? JSON.parse(savedUser) : null;
+    const key = user ? `cart_${user.email}` : 'cart_guest';
+    const savedCart = localStorage.getItem(key);
     return savedCart ? JSON.parse(savedCart) : [];
   });
   const [isCartOpen, setIsCartOpen] = useState(false);
 
   // Wishlist state persisted in localStorage
   const [favorites, setFavorites] = useState<number[]>(() => {
-    const savedFavs = localStorage.getItem('favorites');
+    const savedUser = localStorage.getItem('currentUser');
+    const user = savedUser ? JSON.parse(savedUser) : null;
+    const key = user ? `favorites_${user.email}` : 'favorites_guest';
+    const savedFavs = localStorage.getItem(key);
     return savedFavs ? JSON.parse(savedFavs) : [];
   });
 
@@ -134,6 +413,29 @@ function App() {
     const savedTheme = localStorage.getItem('theme');
     return savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches);
   });
+
+  // Clean up old generic keys from previous sessions to avoid cluttering
+  useEffect(() => {
+    const savedUser = localStorage.getItem('currentUser');
+    if (!savedUser) {
+      localStorage.removeItem('cart');
+      localStorage.removeItem('favorites');
+    }
+  }, []);
+
+  // Sync currentView with localStorage
+  useEffect(() => {
+    localStorage.setItem('currentView', currentView);
+  }, [currentView]);
+
+  // Sync selectedProductId with localStorage
+  useEffect(() => {
+    if (selectedProductId !== null) {
+      localStorage.setItem('selectedProductId', String(selectedProductId));
+    } else {
+      localStorage.removeItem('selectedProductId');
+    }
+  }, [selectedProductId]);
 
   // Sync dark mode class with state
   useEffect(() => {
@@ -148,12 +450,18 @@ function App() {
 
   // Sync cart with localStorage
   useEffect(() => {
-    localStorage.setItem('cart', JSON.stringify(cartItems));
+    const savedUser = localStorage.getItem('currentUser');
+    const user = savedUser ? JSON.parse(savedUser) : null;
+    const key = user ? `cart_${user.email}` : 'cart_guest';
+    localStorage.setItem(key, JSON.stringify(cartItems));
   }, [cartItems]);
 
   // Sync favorites with localStorage
   useEffect(() => {
-    localStorage.setItem('favorites', JSON.stringify(favorites));
+    const savedUser = localStorage.getItem('currentUser');
+    const user = savedUser ? JSON.parse(savedUser) : null;
+    const key = user ? `favorites_${user.email}` : 'favorites_guest';
+    localStorage.setItem(key, JSON.stringify(favorites));
   }, [favorites]);
 
   const toggleDarkMode = () => setIsDarkMode(prev => !prev);
@@ -223,12 +531,17 @@ function App() {
 
 
   // Navigation router
-  const handleNavigate = (view: 'home' | 'products' | 'detail' | 'login' | 'register' | 'profile' | 'dashboard', sortByOption?: string) => {
+  const handleNavigate = (view: 'home' | 'products' | 'detail' | 'login' | 'register' | 'profile' | 'dashboard' | 'checkout' | 'order-detail', sortByOption?: string) => {
     setCurrentView(view);
     if (sortByOption) {
       setSortBy(sortByOption);
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Refresh products to load latest variants/changes when returning to customer views
+    if (view === 'home' || view === 'products' || view === 'detail') {
+      fetchProducts();
+    }
   };
 
   // Category select routing
@@ -245,9 +558,7 @@ function App() {
   // Search submit redirects to Product List
   const handleSearchChange = (query: string) => {
     setSearchQuery(query);
-    if (query && currentView === 'home') {
-      setCurrentView('products');
-    }
+    setCurrentView('products');
   };
 
 
@@ -262,8 +573,10 @@ function App() {
       {/* Top Navigation */}
       {currentView !== 'dashboard' && (
         <Header 
+          products={products}
           searchQuery={searchQuery}
           setSearchQuery={handleSearchChange}
+          onProductClick={handleProductDetailNavigate}
           cartCount={cartCount}
           onCartClick={() => setIsCartOpen(true)}
           isDarkMode={isDarkMode}
@@ -292,16 +605,16 @@ function App() {
 
             {/* Home Best Sellers grid */}
             <section 
-              className="py-[80px] px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto bg-surface-container-low dark:bg-tertiary-container/10 rounded-3xl mb-[80px] transition-colors duration-300 scroll-mt-24"
+              className="py-20 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto border-t border-outline-variant/15 mb-20 scroll-mt-24"
             >
-              <div className="text-center mb-12 px-4">
-                <div className="inline-flex items-center gap-1.5 bg-surface-bright dark:bg-surface-container/20 text-secondary dark:text-secondary-fixed text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full border border-outline-variant/30 mb-3 shadow-sm">
+              <div className="text-center mb-16 px-4">
+                <div className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-secondary mb-3">
                   <Sparkles className="w-3.5 h-3.5" /> Luxury Living
                 </div>
-                <h2 className="font-headline-md text-headline-md text-primary dark:text-primary-fixed-dim font-bold">
+                <h2 className="font-display-serif text-3xl md:text-4xl text-primary font-medium mb-3">
                   Sản Phẩm Bán Chạy
                 </h2>
-                <p className="font-body-md text-body-md text-on-surface-variant dark:text-tertiary-fixed-dim/60 mt-2 max-w-[600px] mx-auto leading-relaxed">
+                <p className="font-body-sm text-sm text-on-surface-variant max-w-[500px] mx-auto leading-relaxed">
                   Những thiết kế nội thất bán chạy nhất, kết hợp hoàn hảo chất liệu gỗ tự nhiên và cơ học cao cấp.
                 </p>
               </div>
@@ -323,13 +636,13 @@ function App() {
                 ))}
               </div>
 
-              <div className="mt-12 text-center">
+              <div className="mt-16 text-center">
                 <button 
                   onClick={() => handleNavigate('products')}
-                  className="bg-transparent border border-primary dark:border-primary-fixed text-primary dark:text-primary-fixed font-semibold text-label-md px-8 py-3 rounded-lg hover:bg-surface-container-highest/60 dark:hover:bg-surface-container-low transition-colors inline-flex items-center gap-2 group shadow-sm hover:shadow"
+                  className="btn-push-outline px-8 py-3 text-xs font-mono tracking-wider inline-flex items-center gap-2"
                 >
-                  Xem Tất Cả Sản Phẩm 
-                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  XEM TẤT CẢ SẢN PHẨM 
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </button>
               </div>
             </section>
@@ -386,7 +699,36 @@ function App() {
 
         {currentView === 'profile' && (
           <div className="animate-fadeIn">
-            <ProfilePage onNavigate={handleNavigate} currentUser={currentUser} onLogout={handleLogout} />
+            <ProfilePage 
+              onNavigate={handleNavigate} 
+              currentUser={currentUser} 
+              onLogout={handleLogout} 
+              orders={orders}
+              onViewOrder={(order) => {
+                setSelectedOrder(order);
+                handleNavigate('order-detail');
+              }}
+            />
+          </div>
+        )}
+
+        {currentView === 'checkout' && (
+          <div className="animate-fadeIn">
+            <CheckoutPage 
+              cartItems={cartItems} 
+              currentUser={currentUser} 
+              onNavigate={handleNavigate} 
+              onPlaceOrder={handlePlaceOrder} 
+            />
+          </div>
+        )}
+
+        {currentView === 'order-detail' && (
+          <div className="animate-fadeIn">
+            <OrderDetailPage 
+              order={selectedOrder} 
+              onNavigate={handleNavigate} 
+            />
           </div>
         )}
 
@@ -396,7 +738,7 @@ function App() {
       </div>
 
       {/* Footer */}
-      {currentView !== 'dashboard' && <Footer />}
+      {currentView !== 'dashboard' && currentView !== 'checkout' && currentView !== 'order-detail' && <Footer />}
 
       {/* Sliding Shopping Cart Drawer */}
       <CartDrawer 
@@ -406,8 +748,12 @@ function App() {
         onUpdateQuantity={handleUpdateQuantity}
         onRemoveItem={handleRemoveItem}
         onCheckout={() => {
-          alert('Cảm ơn bạn đã trải nghiệm mua sắm! Đây là phiên bản demo tính năng thanh toán.');
-          setCartItems([]);
+          if (!currentUser) {
+            alert('Vui lòng đăng nhập trước khi tiến hành thanh toán.');
+            handleNavigate('login');
+          } else {
+            handleNavigate('checkout');
+          }
           setIsCartOpen(false);
         }}
       />

@@ -3,22 +3,88 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --color-paper: oklch(96.5% 0.015 85); /* Warm Oat / Cream */
+    --color-paper-lowest: oklch(98.5% 0.01 85); /* Lighter Cream */
+    --color-paper-low: oklch(94.5% 0.02 85); /* Slightly darker Cream */
+    --color-paper-high: oklch(91.5% 0.025 85); /* Accent block Cream */
+    --color-ink: oklch(22% 0.01 70); /* Deep Charcoal */
+    --color-ink-variant: oklch(42% 0.015 70); /* Medium Charcoal */
+    --color-accent: oklch(62% 0.17 38); /* Terracotta */
+    --color-accent-hover: oklch(55% 0.15 38); /* Deep Terracotta */
+    --color-border: oklch(22% 0.01 70 / 0.12); /* Subtle hairline */
+  }
+
+  .dark {
+    --color-paper: oklch(14% 0.01 270); /* Deep charcoal/indigo */
+    --color-paper-lowest: oklch(10% 0.01 270); 
+    --color-paper-low: oklch(17% 0.015 270);
+    --color-paper-high: oklch(22% 0.02 270);
+    --color-ink: oklch(94% 0.005 270); /* Off-white */
+    --color-ink-variant: oklch(75% 0.01 270);
+    --color-accent: oklch(70% 0.14 38); /* Terracotta */
+    --color-accent-hover: oklch(76% 0.16 38);
+    --color-border: oklch(94% 0.005 270 / 0.15);
+  }
+
   body {
     @apply bg-surface text-on-surface transition-colors duration-300;
   }
 }
 
-/* Custom Glassmorphism Styles */
-.glassmorphism {
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+/* Tactile push button styles */
+.btn-push {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em;
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  border: 1px solid var(--color-ink);
+  border-radius: 8px;
+  color: var(--color-paper);
+  background: var(--color-ink);
+  cursor: pointer;
+  position: relative;
+  box-shadow: 0 4px 0 0 var(--color-accent), 0 6px 12px -3px oklch(0% 0 0 / 0.15);
+  transform: translateY(0);
+  transition: transform 140ms cubic-bezier(0.2, 0.7, 0.3, 1), box-shadow 140ms cubic-bezier(0.2, 0.7, 0.3, 1), background-color 160ms;
 }
 
-.dark .glassmorphism {
-  background: rgba(26, 36, 52, 0.8);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+.btn-push:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 0 var(--color-accent), 0 8px 16px -3px oklch(0% 0 0 / 0.2);
+}
+
+.btn-push:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 0 var(--color-accent), 0 2px 4px -3px oklch(0% 0 0 / 0.1);
+}
+
+.btn-push-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em;
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  border: 1px solid var(--color-ink);
+  border-radius: 8px;
+  color: var(--color-ink);
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+  transform: translateY(0);
+  transition: transform 140ms cubic-bezier(0.2, 0.7, 0.3, 1), background-color 160ms;
+}
+
+.btn-push-outline:hover {
+  transform: translateY(-2px);
+  background: var(--color-paper-low);
+}
+
+.btn-push-outline:active {
+  transform: translateY(1px);
 }
 
 /* Custom Scrollbar for Drawer/Cart */
@@ -29,23 +95,54 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  @apply bg-outline-variant/50 rounded-full;
+  background-color: var(--color-border);
+  border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-outline/50;
+  background-color: var(--color-ink-variant);
 }
 
 /* Animations */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-@keyframes float {
-  0%, 100% { transform: translateY(0) scale(1); opacity: 0.3; }
-  50% { transform: translateY(-20px) scale(1.1); opacity: 0.6; }
+@keyframes zoomSlow {
+  0% {
+    transform: scale(1.02);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1.02);
+  }
+}
+
+@keyframes drawIn {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+.animate-fadeInUp {
+  animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-zoomSlow {
+  animation: zoomSlow 12s ease-in-out infinite;
 }
 
 .animate-fadeIn {
-  animation: fadeIn 0.4s ease-out forwards;
+  animation: fadeInUp 0.4s ease-out forwards;
 }

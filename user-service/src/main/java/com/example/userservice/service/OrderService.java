@@ -28,10 +28,12 @@ public class OrderService {
         }
         Order saved = orderRepository.save(order);
 
-        // Save each item with the order ID
+        // Delete existing items for this order ID if updating to prevent duplicate rows
         if (items != null) {
+            orderItemRepository.deleteByOrderId(saved.getId());
             for (OrderItem item : items) {
                 item.setOrderId(saved.getId());
+                item.setId(null);
             }
             orderItemRepository.saveAll(items);
         }
@@ -65,10 +67,30 @@ public class OrderService {
     }
 
     @Transactional
+    public OrderResponse cancelOrder(String id, String reason) {
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Đơn hàng không tồn tại: " + id));
+
+        if ("COMPLETED".equals(order.getStatus())) {
+            throw new IllegalStateException("Không thể hủy đơn hàng đã hoàn thành!");
+        }
+
+        order.setStatus("CANCELLED");
+        order.setCancelReason(reason != null && !reason.isBlank() ? reason : "Khách hàng yêu cầu hủy đơn");
+        order.setCancelledAt(java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm dd/MM/yyyy")));
+        Order saved = orderRepository.save(order);
+        return toDto(saved, orderItemRepository.findByOrderId(id));
+    }
+
+    @Transactional
     public OrderResponse updateStatus(String id, String status) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Đơn hàng không tồn tại: " + id));
         order.setStatus(status);
+        if ("CANCELLED".equals(status) && (order.getCancelReason() == null || order.getCancelReason().isBlank())) {
+            order.setCancelReason("Đã hủy bởi Quản trị viên");
+            order.setCancelledAt(java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm dd/MM/yyyy")));
+        }
         Order saved = orderRepository.save(order);
         return toDto(saved, orderItemRepository.findByOrderId(id));
     }
@@ -104,6 +126,8 @@ public class OrderService {
                 .expiryDate(order.getExpiryDate())
                 .status(order.getStatus())
                 .createdAt(order.getCreatedAt())
+                .cancelReason(order.getCancelReason())
+                .cancelledAt(order.getCancelledAt())
                 .items(itemDtos)
                 .build();
     }

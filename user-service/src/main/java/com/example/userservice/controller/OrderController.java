@@ -79,4 +79,10 @@ public class OrderController {
     public OrderResponse updateOrderStatus(@PathVariable String id, @RequestParam String status) {
         return orderService.updateStatus(id, status);
     }
+
+    @PutMapping("/{id}/cancel")
+    public OrderResponse cancelOrder(@PathVariable String id, @RequestBody(required = false) Map<String, String> body) {
+        String reason = body != null ? body.get("reason") : null;
+        return orderService.cancelOrder(id, reason);
+    }
 }

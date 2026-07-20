@@ -1,6 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { User, MapPin, LogOut, ArrowRight, Plus, Trash2, Edit } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { User, MapPin, LogOut, ArrowRight, Plus, Trash2, Edit, ShoppingBag, Package, Search, Calendar, Eye, CheckCircle2, Clock, XCircle, AlertCircle } from 'lucide-react';
 import type { Order } from '../types';
+
+const CANCELLATION_REASONS = [
+  'Tôi muốn thay đổi địa chỉ giao hàng / số điện thoại',
+  'Tôi muốn thay đổi mã giảm giá / phương thức thanh toán / mặt hàng',
+  'Tôi không còn nhu cầu mua nữa',
+  'Tìm thấy nơi khác có giá tốt hơn',
+  'Lý do khác'
+];
 
 interface ProfilePageProps {
   onNavigate: (view: 'home' | 'products' | 'detail' | 'login' | 'register' | 'profile' | 'checkout' | 'order-detail') => void;
@@ -34,8 +43,17 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   const [isUpdating, setIsUpdating] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Address-related states
-  const [activeTab, setActiveTab] = useState<'profile' | 'addresses'>('profile');
+  // Address & Navigation states
+  const [activeTab, setActiveTab] = useState<'profile' | 'addresses' | 'orders'>('profile');
+  const [orderStatusFilter, setOrderStatusFilter] = useState<'ALL' | 'PROCESSING' | 'COMPLETED' | 'CANCELLED'>('ALL');
+  const [orderSearchQuery, setOrderSearchQuery] = useState('');
+
+  // Cancellation Modal states
+  const [cancelModalOrder, setCancelModalOrder] = useState<Order | null>(null);
+  const [cancelReasonOption, setCancelReasonOption] = useState<string>(CANCELLATION_REASONS[0]);
+  const [customCancelReason, setCustomCancelReason] = useState<string>('');
+  const [isCancelling, setIsCancelling] = useState(false);
+
   const [userId, setUserId] = useState<number | null>(null);
   const [addresses, setAddresses] = useState<any[]>([]);
   const [provinces, setProvinces] = useState<any[]>([]);
@@ -222,6 +240,86 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
     setAddressLabel('HOME');
   };
 
+  const handleOpenCancelModal = (order: Order, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (order.status === 'PROCESSING') {
+      alert('Đơn hàng đã được duyệt và đang trong quá trình vận chuyển. Bạn không thể tự hủy đơn. Vui lòng liên hệ bộ phận hỗ trợ khách hàng!');
+      return;
+    }
+    if (order.status === 'COMPLETED') {
+      alert('Đơn hàng đã hoàn thành, không thể hủy!');
+      return;
+    }
+    setCancelModalOrder(order);
+    setCancelReasonOption(CANCELLATION_REASONS[0]);
+    setCustomCancelReason('');
+  };
+
+  useEffect(() => {
+    if (cancelModalOrder) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [cancelModalOrder]);
+
+  const handleConfirmCancel = async () => {
+    if (!cancelModalOrder) return;
+    setIsCancelling(true);
+
+    const finalReason = cancelReasonOption === 'Lý do khác' 
+      ? (customCancelReason.trim() || 'Lý do khác')
+      : cancelReasonOption;
+
+    try {
+      const response = await fetch(`http://localhost:8080/users/orders/${cancelModalOrder.id}/cancel`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: finalReason })
+      });
+
+      if (response.ok) {
+        const updatedData = await response.json();
+        setMessage({ type: 'success', text: `Đã hủy thành công đơn hàng #${cancelModalOrder.id}` });
+        
+        cancelModalOrder.status = 'CANCELLED';
+        cancelModalOrder.cancelReason = updatedData.cancelReason || finalReason;
+        cancelModalOrder.cancelledAt = updatedData.cancelledAt || new Date().toLocaleString('vi-VN');
+
+        // Sync to localStorage cache
+        try {
+          const localRaw = localStorage.getItem('luxe_orders');
+          if (localRaw) {
+            const localOrders: Order[] = JSON.parse(localRaw);
+            const updatedLocal = localOrders.map(o => o.id === cancelModalOrder.id ? {
+              ...o,
+              status: 'CANCELLED' as const,
+              cancelReason: cancelModalOrder.cancelReason,
+              cancelledAt: cancelModalOrder.cancelledAt
+            } : o);
+            localStorage.setItem('luxe_orders', JSON.stringify(updatedLocal));
+          }
+        } catch (e) {
+          console.warn('Lỗi lưu localStorage:', e);
+        }
+
+        setCancelModalOrder(null);
+      } else {
+        const errText = await response.text();
+        alert('Cập nhật trạng thái hủy đơn lên Server thất bại: ' + errText);
+        setMessage({ type: 'error', text: 'Hủy đơn thất bại: ' + errText });
+      }
+    } catch (err: any) {
+      alert('Không thể kết nối Server để hủy đơn: ' + err.message);
+      setMessage({ type: 'error', text: 'Lỗi kết nối: ' + err.message });
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
   // Load addresses and provinces when tab changes to addresses
   useEffect(() => {
     if (activeTab === 'addresses') {
@@ -361,6 +459,24 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
               <MapPin className="w-3.5 h-3.5" />
               <span>Sổ địa chỉ</span>
             </button>
+            <button 
+              onClick={() => setActiveTab('orders')}
+              className={`flex items-center justify-between px-3 py-2.5 rounded text-left w-full transition-colors ${
+                activeTab === 'orders'
+                  ? 'bg-secondary/5 text-secondary font-bold font-mono text-[10px] uppercase tracking-wider border-l-2 border-secondary'
+                  : 'text-on-surface-variant/80 font-mono text-[10px] uppercase tracking-wider hover:bg-surface-container-low'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <ShoppingBag className="w-3.5 h-3.5" />
+                <span>Lịch sử đơn hàng</span>
+              </div>
+              {orders.length > 0 && (
+                <span className="px-1.5 py-0.2 font-mono text-[9px] bg-secondary/10 text-secondary rounded-full font-bold">
+                  {orders.length}
+                </span>
+              )}
+            </button>
             
             <div className="pt-4 mt-2 border-t border-outline-variant/15">
               <button
@@ -391,7 +507,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             </div>
           ) : (
             <>
-              {activeTab === 'profile' ? (
+              {activeTab === 'profile' && (
                 <>
                   {/* Form Section */}
                   <section className="bg-surface-container-lowest rounded-lg border border-outline-variant/15 p-6 md:p-8 relative overflow-hidden">
@@ -524,7 +640,10 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                   <section className="bg-surface-container-lowest rounded-lg border border-outline-variant/15 overflow-hidden">
                     <div className="flex justify-between items-center p-6 border-b border-outline-variant/15">
                       <h2 className="font-display-serif text-xl font-medium text-primary">Đơn Hàng Gần Đây</h2>
-                      <button className="font-mono text-[9px] uppercase tracking-widest text-secondary hover:underline flex items-center gap-1">
+                      <button 
+                        onClick={() => setActiveTab('orders')}
+                        className="font-mono text-[9px] uppercase tracking-widest text-secondary hover:underline flex items-center gap-1 cursor-pointer"
+                      >
                         Xem tất cả <ArrowRight className="w-3 h-3" />
                       </button>
                     </div>
@@ -546,7 +665,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                               </td>
                             </tr>
                           ) : (
-                            orders.map((order) => (
+                            orders.slice(0, 5).map((order) => (
                               <tr 
                                 key={order.id} 
                                 onClick={() => onViewOrder(order)}
@@ -577,7 +696,240 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                     </div>
                   </section>
                 </>
-              ) : (
+              )}
+
+              {activeTab === 'orders' && (
+                <section className="bg-surface-container-lowest rounded-lg border border-outline-variant/15 p-6 md:p-8 relative overflow-hidden animate-fadeIn">
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 border-b border-outline-variant/10 pb-4">
+                    <div>
+                      <h2 className="font-display-serif text-2xl font-medium text-primary flex items-center gap-2">
+                        <Package className="w-6 h-6 text-secondary" />
+                        Lịch Sử Đơn Hàng
+                      </h2>
+                      <p className="font-mono text-[10px] uppercase tracking-widest text-on-surface-variant/75 mt-1">
+                        Quản lý và theo dõi thông tin tất cả đơn hàng đã mua ({orders.length} đơn hàng)
+                      </p>
+                    </div>
+
+                    {/* Search Box */}
+                    <div className="relative w-full md:w-64">
+                      <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-outline" />
+                      <input
+                        type="text"
+                        placeholder="Tìm mã đơn hoặc sản phẩm..."
+                        value={orderSearchQuery}
+                        onChange={(e) => setOrderSearchQuery(e.target.value)}
+                        className="w-full bg-surface border border-outline-variant/35 focus:border-secondary rounded-md pl-9 pr-3 py-2 font-mono text-xs text-on-surface outline-none transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Filter Tabs */}
+                  <div className="flex flex-wrap items-center gap-2 mb-6 border-b border-outline-variant/15 pb-3">
+                    {[
+                      { key: 'ALL', label: 'Tất cả' },
+                      { key: 'PROCESSING', label: 'Đang xử lý / Giao hàng' },
+                      { key: 'COMPLETED', label: 'Đã hoàn thành' },
+                      { key: 'CANCELLED', label: 'Đã hủy' }
+                    ].map((tab) => (
+                      <button
+                        key={tab.key}
+                        onClick={() => setOrderStatusFilter(tab.key as any)}
+                        className={`px-3.5 py-1.5 rounded-full font-mono text-[10px] uppercase tracking-wider transition-all font-semibold cursor-pointer ${
+                          orderStatusFilter === tab.key
+                            ? 'bg-primary text-white shadow-sm'
+                            : 'bg-surface-container-low text-on-surface-variant/80 hover:bg-surface-container-high'
+                        }`}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Orders List */}
+                  {(() => {
+                    const filteredOrders = orders.filter((order) => {
+                      if (orderStatusFilter === 'PROCESSING' && !(order.status === 'PROCESSING' || order.status === 'PENDING')) return false;
+                      if (orderStatusFilter === 'COMPLETED' && order.status !== 'COMPLETED') return false;
+                      if (orderStatusFilter === 'CANCELLED' && order.status !== 'CANCELLED') return false;
+
+                      if (orderSearchQuery.trim()) {
+                        const query = orderSearchQuery.toLowerCase().trim();
+                        const matchesId = order.id.toLowerCase().includes(query);
+                        const matchesReceiver = order.receiverName?.toLowerCase().includes(query);
+                        const matchesItem = order.items?.some(i => i.product.name.toLowerCase().includes(query));
+                        return matchesId || matchesReceiver || matchesItem;
+                      }
+
+                      return true;
+                    });
+
+                    if (filteredOrders.length === 0) {
+                      return (
+                        <div className="text-center py-16 px-4">
+                          <ShoppingBag className="w-12 h-12 mx-auto text-outline/30 mb-3 animate-pulse" />
+                          <h3 className="font-display-serif text-lg font-medium text-primary">Không tìm thấy đơn hàng nào</h3>
+                          <p className="font-mono text-[10px] uppercase tracking-wider text-outline mt-1 mb-6">
+                            {orders.length === 0 
+                              ? 'Bạn chưa thực hiện đơn hàng nào trên LuxeCommerce.' 
+                              : 'Không có đơn hàng nào phù hợp với bộ lọc đã chọn.'}
+                          </p>
+                          {orders.length === 0 && (
+                            <button
+                              onClick={() => onNavigate('products')}
+                              className="btn-push text-white font-mono text-xs uppercase tracking-widest px-6 py-2.5 cursor-pointer"
+                            >
+                              KHÁM PHÁ SẢN PHẨM NGAY
+                            </button>
+                          )}
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="space-y-6">
+                        {filteredOrders.map((order) => {
+                          const isCompleted = order.status === 'COMPLETED';
+                          const isCancelled = order.status === 'CANCELLED';
+                          const isProcessing = order.status === 'PROCESSING' || order.status === 'PENDING';
+
+                          return (
+                            <div 
+                              key={order.id} 
+                              className="border border-outline-variant/20 rounded-lg bg-surface-container-lowest hover:border-outline-variant/50 transition-all overflow-hidden shadow-sm"
+                            >
+                              {/* Order Card Header */}
+                              <div className="bg-surface-container-low/40 p-4 sm:px-6 flex flex-wrap justify-between items-center gap-3 border-b border-outline-variant/15">
+                                <div className="flex items-center gap-3">
+                                  <span className="font-mono text-xs font-bold text-primary">#{order.id}</span>
+                                  <span className="text-outline/40">•</span>
+                                  <span className="font-mono text-[10px] uppercase tracking-wider text-on-surface-variant/75 flex items-center gap-1">
+                                    <Calendar className="w-3 h-3 text-outline" /> {order.createdAt}
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded text-[10px] uppercase tracking-wider font-bold ${
+                                    isCompleted ? 'bg-emerald-500/10 text-emerald-600' :
+                                    isProcessing ? 'bg-blue-500/10 text-blue-600' :
+                                    isCancelled ? 'bg-error/10 text-error' :
+                                    'bg-amber-500/10 text-[#FF5F38]'
+                                  }`}>
+                                    {isCompleted && <CheckCircle2 className="w-3 h-3" />}
+                                    {isProcessing && <Clock className="w-3 h-3" />}
+                                    {isCancelled && <XCircle className="w-3 h-3" />}
+                                    {isCompleted ? 'Đã giao thành công' :
+                                     order.status === 'PROCESSING' ? 'Đang vận chuyển' :
+                                     isCancelled ? 'Đã hủy' : 'Đang chờ xử lý'}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Order Items List */}
+                              <div className="p-4 sm:p-6 divide-y divide-outline-variant/10">
+                                {(() => {
+                                  const itemMap = new Map<string, any>();
+                                  for (const item of order.items || []) {
+                                    const key = `${item.product?.id || item.product?.name}_${item.selectedColor || ''}_${item.selectedSize || ''}`;
+                                    if (itemMap.has(key)) {
+                                      const existing = itemMap.get(key);
+                                      existing.quantity += item.quantity;
+                                    } else {
+                                      itemMap.set(key, { ...item });
+                                    }
+                                  }
+                                  const uniqueItems = Array.from(itemMap.values());
+
+                                  return uniqueItems.map((item, idx) => (
+                                    <div key={`${order.id}-item-${idx}`} className="py-3 first:pt-0 last:pb-0 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                      <div className="flex items-center gap-4">
+                                        <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-lg border border-outline-variant/20 bg-white dark:bg-surface-container-low p-1 shrink-0 flex items-center justify-center overflow-hidden shadow-sm">
+                                          <img 
+                                            src={item.product.image || 'https://via.placeholder.com/300'} 
+                                            alt={item.product.name} 
+                                            className="w-full h-full object-contain object-center rounded transition-transform hover:scale-105"
+                                            loading="lazy"
+                                          />
+                                        </div>
+                                        <div>
+                                          <h4 className="font-display-serif text-sm font-semibold text-primary line-clamp-1">{item.product.name}</h4>
+                                          {(item.selectedColor || item.selectedSize) && (
+                                            <p className="font-mono text-[10px] uppercase tracking-wider text-on-surface-variant/75 mt-0.5">
+                                              {item.selectedColor && `Màu: ${item.selectedColor}`} {item.selectedColor && item.selectedSize && '•'} {item.selectedSize && `Size: ${item.selectedSize}`}
+                                            </p>
+                                          )}
+                                          <p className="font-mono text-xs text-outline mt-1">
+                                            Số lượng: <span className="font-bold text-primary">{item.quantity}</span>
+                                          </p>
+                                        </div>
+                                      </div>
+
+                                      <div className="text-right self-end sm:self-center">
+                                        <p className="font-mono text-xs font-semibold text-primary">
+                                          {item.product.price.toLocaleString('vi-VN')} ₫
+                                        </p>
+                                      </div>
+                                    </div>
+                                  ));
+                                })()}
+                              </div>
+
+                              {order.status === 'CANCELLED' && order.cancelReason && (
+                                <div className="mx-4 sm:mx-6 mb-3 p-3 bg-error/5 border border-error/20 rounded font-mono text-[11px] text-error flex items-start gap-2">
+                                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                                  <div>
+                                    <span className="font-bold">Lý do hủy đơn: </span>
+                                    <span>{order.cancelReason}</span>
+                                    {order.cancelledAt && <span className="text-outline text-[10px] ml-2">({order.cancelledAt})</span>}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Order Card Footer */}
+                              <div className="bg-surface-container-low/20 p-4 sm:px-6 border-t border-outline-variant/15 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                                <div className="font-mono text-[11px] text-on-surface-variant/80">
+                                  <span>Giao tới: </span>
+                                  <span className="font-semibold text-primary">{order.receiverName}</span>
+                                  <span className="text-outline mx-1">•</span>
+                                  <span>{order.phoneNumber}</span>
+                                </div>
+
+                                <div className="flex items-center justify-between w-full sm:w-auto gap-4 self-end sm:self-auto">
+                                  <div className="text-right">
+                                    <span className="font-mono text-[9px] uppercase tracking-wider text-outline block">Tổng tiền đơn hàng</span>
+                                    <span className="font-display-serif text-lg font-bold text-primary">
+                                      {order.total.toLocaleString('vi-VN')} ₫
+                                    </span>
+                                  </div>
+
+                                  {order.status === 'PENDING' && (
+                                    <button
+                                      onClick={(e) => handleOpenCancelModal(order, e)}
+                                      className="px-3.5 py-2 border border-error/40 text-error hover:bg-error/10 rounded font-mono text-[10px] uppercase tracking-wider font-bold transition-all cursor-pointer shadow-sm"
+                                    >
+                                      Hủy đơn hàng
+                                    </button>
+                                  )}
+
+                                  <button
+                                    onClick={() => onViewOrder(order)}
+                                    className="btn-push text-white font-mono text-[10px] uppercase tracking-widest px-4 py-2.5 flex items-center gap-1.5 cursor-pointer"
+                                  >
+                                    <Eye className="w-3.5 h-3.5" />
+                                    <span>Xem Chi Tiết</span>
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+                </section>
+              )}
+
+              {activeTab === 'addresses' && (
                 <section className="bg-surface-container-lowest rounded-lg border border-outline-variant/15 p-6 md:p-8 relative overflow-hidden">
                   <div className="flex justify-between items-center mb-6 border-b border-outline-variant/10 pb-4">
                     <h2 className="font-display-serif text-xl font-medium text-primary">
@@ -824,8 +1176,88 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             </>
           )}
         </main>
-        
       </div>
+
+      {/* Cancellation Reason Modal rendered via Portal to document.body to prevent parent container transform/animation bugs */}
+      {cancelModalOrder && createPortal(
+        <div className="fixed inset-0 top-0 left-0 w-screen h-screen z-[99999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 select-none animate-fadeIn">
+          <div className="bg-surface max-w-lg w-full border border-outline-variant/20 rounded-lg shadow-2xl p-6 relative flex flex-col max-h-[85vh] animate-fadeInUp">
+            {/* Header */}
+            <div className="flex justify-between items-center border-b border-outline-variant/15 pb-4 mb-2 shrink-0">
+              <div>
+                <h3 className="font-display-serif text-xl font-semibold text-primary">
+                  Hủy Đơn Hàng #{cancelModalOrder.id}
+                </h3>
+                <p className="font-mono text-[10px] text-outline uppercase tracking-wider mt-0.5">
+                  Ngày đặt: {cancelModalOrder.createdAt}
+                </p>
+              </div>
+              <button
+                onClick={() => setCancelModalOrder(null)}
+                className="text-on-surface-variant hover:text-primary font-mono text-xs font-bold cursor-pointer"
+              >
+                [ĐÓNG]
+              </button>
+            </div>
+
+            {/* Subtitle & Scrollable Reasons List */}
+            <div className="overflow-y-auto space-y-3 pr-1.5 my-2 flex-1">
+              <p className="font-mono text-xs text-on-surface-variant/90 mb-3">
+                Vui lòng chọn lý do bạn muốn hủy đơn hàng này. Thao tác hủy đơn không thể hoàn tác.
+              </p>
+
+              {CANCELLATION_REASONS.map((reason) => (
+                <label 
+                  key={reason} 
+                  className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+                    cancelReasonOption === reason 
+                      ? 'border-secondary bg-secondary/5 font-semibold text-primary shadow-sm' 
+                      : 'border-outline-variant/30 hover:bg-surface-container-low text-on-surface-variant'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="cancelReason"
+                    value={reason}
+                    checked={cancelReasonOption === reason}
+                    onChange={() => setCancelReasonOption(reason)}
+                    className="w-4 h-4 text-secondary focus:ring-secondary/20 bg-transparent border-outline-variant cursor-pointer"
+                  />
+                  <span className="font-mono text-xs">{reason}</span>
+                </label>
+              ))}
+
+              {cancelReasonOption === 'Lý do khác' && (
+                <textarea
+                  rows={3}
+                  placeholder="Nhập lý do chi tiết của bạn..."
+                  value={customCancelReason}
+                  onChange={(e) => setCustomCancelReason(e.target.value)}
+                  className="w-full bg-surface-container-lowest border border-outline-variant/35 focus:border-secondary rounded-md p-3 font-mono text-xs text-on-surface outline-none mt-2"
+                />
+              )}
+            </div>
+
+            {/* Actions Footer */}
+            <div className="flex justify-end gap-3 border-t border-outline-variant/15 pt-4 mt-2 shrink-0">
+              <button
+                onClick={() => setCancelModalOrder(null)}
+                className="btn-push-outline px-5 py-2.5 text-xs font-mono tracking-wider cursor-pointer"
+              >
+                QUAY LẠI
+              </button>
+              <button
+                onClick={handleConfirmCancel}
+                disabled={isCancelling}
+                className="btn-push bg-error hover:bg-error/90 text-white font-mono text-xs uppercase tracking-widest px-5 py-2.5 cursor-pointer shadow-md"
+              >
+                {isCancelling ? 'ĐANG HỦY...' : 'XÁC NHẬN HỦY ĐƠN'}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };

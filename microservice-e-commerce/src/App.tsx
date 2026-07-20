@@ -256,35 +256,58 @@ function App() {
           const updatedRes = await fetch(`http://localhost:8080/users/orders/user/${id}`);
           const updatedOrders = updatedRes.ok ? await updatedRes.json() : dbOrders;
 
-          // Map backend entities to frontend Order type structure
-          const mappedOrders = updatedOrders.map((o: any) => ({
-            id: o.id,
-            items: o.items.map((item: any) => ({
-              product: {
-                id: item.productId,
-                name: item.productName,
-                price: item.price,
-                image: item.image,
-                sku: item.sku
-              },
-              quantity: item.quantity,
-              selectedColor: item.selectedColor,
-              selectedSize: item.selectedSize
-            })),
-            subtotal: o.subtotal,
-            total: o.total,
-            receiverName: o.receiverName,
-            phoneNumber: o.phoneNumber,
-            address: o.address,
-            paymentMethod: o.paymentMethod,
-            cardInfo: o.paymentMethod === 'CARD' ? {
-              cardNumber: o.cardNumber,
-              cardName: o.cardName,
-              expiryDate: o.expiryDate
-            } : undefined,
-            status: o.status,
-            createdAt: o.createdAt
-          }));
+          // Map backend entities to frontend Order type structure & deduplicate items
+          const mappedOrders = updatedOrders.map((o: any) => {
+            const rawItems = o.items || [];
+            const itemMap = new Map<string, any>();
+
+            for (const item of rawItems) {
+              const key = `${item.productId}_${item.selectedColor || ''}_${item.selectedSize || ''}`;
+              const realProd = products.find(p => p.id === item.productId);
+              const resolvedName = (item.productName && item.productName !== 'Something') 
+                ? item.productName 
+                : (realProd?.name || item.productName || 'Sản phẩm');
+              const resolvedImage = item.image || realProd?.image || 'https://via.placeholder.com/150';
+
+              if (itemMap.has(key)) {
+                const existing = itemMap.get(key);
+                existing.quantity += item.quantity;
+              } else {
+                itemMap.set(key, {
+                  product: {
+                    id: item.productId,
+                    name: resolvedName,
+                    price: item.price || realProd?.price || 0,
+                    image: resolvedImage,
+                    sku: item.sku || realProd?.sku || 'N/A'
+                  },
+                  quantity: item.quantity,
+                  selectedColor: item.selectedColor,
+                  selectedSize: item.selectedSize
+                });
+              }
+            }
+
+            return {
+              id: o.id,
+              items: Array.from(itemMap.values()),
+              subtotal: o.subtotal,
+              total: o.total,
+              receiverName: o.receiverName,
+              phoneNumber: o.phoneNumber,
+              address: o.address,
+              paymentMethod: o.paymentMethod,
+              cardInfo: o.paymentMethod === 'CARD' ? {
+                cardNumber: o.cardNumber,
+                cardName: o.cardName,
+                expiryDate: o.expiryDate
+              } : undefined,
+              status: o.status,
+              createdAt: o.createdAt,
+              cancelReason: o.cancelReason,
+              cancelledAt: o.cancelledAt
+            };
+          });
           setOrders(mappedOrders);
           localStorage.setItem('luxe_orders', JSON.stringify(mappedOrders));
         }

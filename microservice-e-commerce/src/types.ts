@@ -65,4 +65,6 @@ export interface Order {
   };
   status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'CANCELLED';
   createdAt: string;
+  cancelReason?: string;
+  cancelledAt?: string;
 }

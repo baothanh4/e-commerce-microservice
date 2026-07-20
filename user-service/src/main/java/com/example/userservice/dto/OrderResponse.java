@@ -25,6 +25,8 @@ public class OrderResponse {
     private String expiryDate;
     private String status;
     private String createdAt;
+    private String cancelReason;
+    private String cancelledAt;
     private List<OrderItemResponse> items;
 
     @Data

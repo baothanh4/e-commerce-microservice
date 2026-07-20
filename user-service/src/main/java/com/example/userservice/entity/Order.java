@@ -49,4 +49,10 @@ public class Order {
 
     @Column(name = "created_at")
     private String createdAt;
+
+    @Column(name = "cancel_reason")
+    private String cancelReason;
+
+    @Column(name = "cancelled_at")
+    private String cancelledAt;
 }

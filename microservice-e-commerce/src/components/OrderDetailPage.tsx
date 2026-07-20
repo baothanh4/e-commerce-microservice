@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShoppingBag, ChevronRight, Home, CreditCard } from 'lucide-react';
+import { ShoppingBag, ChevronRight, Home, CreditCard, ArrowLeft } from 'lucide-react';
 import type { CartItem, Order } from '../types';
 
 interface OrderDetailPageProps {
@@ -16,7 +16,7 @@ export const OrderDetailPage: React.FC<OrderDetailPageProps> = ({ order, onNavig
         <p className="font-mono text-[9px] uppercase tracking-wider text-outline mt-2 mb-6">
           Vui lòng kiểm tra lại đường dẫn hoặc quay lại lịch sử mua hàng.
         </p>
-        <button onClick={() => onNavigate('home')} className="btn-push px-6 py-2.5 font-mono text-xs text-white">
+        <button onClick={() => onNavigate('home')} className="btn-push px-6 py-2.5 font-mono text-xs text-white cursor-pointer">
           QUAY LẠI TRANG CHỦ
         </button>
       </div>
@@ -49,13 +49,23 @@ export const OrderDetailPage: React.FC<OrderDetailPageProps> = ({ order, onNavig
   return (
     <div className="min-h-screen bg-surface py-12 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto select-none animate-fadeIn">
       
-      {/* Top breadcrumb navigation */}
-      <div className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-widest text-on-surface-variant/75 mb-8">
-        <button onClick={() => onNavigate('home')} className="hover:text-primary transition-colors">TRANG CHỦ</button>
-        <ChevronRight className="w-3 h-3 text-outline/30" />
-        <button onClick={() => onNavigate('profile')} className="hover:text-primary transition-colors">TÀI KHOẢN</button>
-        <ChevronRight className="w-3 h-3 text-outline/30" />
-        <span className="text-primary font-bold">CHI TIẾT ĐƠN HÀNG</span>
+      {/* Top breadcrumb navigation and back button */}
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
+        <div className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-widest text-on-surface-variant/75">
+          <button onClick={() => onNavigate('home')} className="hover:text-primary transition-colors cursor-pointer">TRANG CHỦ</button>
+          <ChevronRight className="w-3 h-3 text-outline/30" />
+          <button onClick={() => onNavigate('profile')} className="hover:text-primary transition-colors cursor-pointer">TÀI KHOẢN</button>
+          <ChevronRight className="w-3 h-3 text-outline/30" />
+          <span className="text-primary font-bold">CHI TIẾT ĐƠN HÀNG</span>
+        </div>
+
+        <button
+          onClick={() => onNavigate('profile')}
+          className="inline-flex items-center gap-2 font-mono text-xs text-secondary hover:underline cursor-pointer"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Quay lại Lịch sử đơn hàng</span>
+        </button>
       </div>
 
       <div className="border border-outline-variant/15 rounded-lg bg-surface-container-lowest overflow-hidden">
@@ -82,6 +92,14 @@ export const OrderDetailPage: React.FC<OrderDetailPageProps> = ({ order, onNavig
             </p>
           </div>
         </div>
+
+        {order.status === 'CANCELLED' && (
+          <div className="m-6 p-4 bg-error/10 border-l-4 border-error text-error rounded-r font-mono text-xs space-y-1">
+            <p className="font-bold text-sm uppercase tracking-wider">Đơn hàng đã bị hủy</p>
+            {order.cancelReason && <p><span className="font-semibold">Lý do hủy:</span> {order.cancelReason}</p>}
+            {order.cancelledAt && <p className="text-[10px] opacity-80">Thời gian hủy: {order.cancelledAt}</p>}
+          </div>
+        )}
 
         {/* Recipient Details & Payment info blocks */}
         <div className="grid grid-cols-1 md:grid-cols-2 border-b border-outline-variant/10">
@@ -149,8 +167,15 @@ export const OrderDetailPage: React.FC<OrderDetailPageProps> = ({ order, onNavig
               <tbody className="divide-y divide-outline-variant/10">
                 {order.items.map((item) => (
                   <tr key={`${item.product.id}-${item.selectedColor || ''}-${item.selectedSize || ''}`}>
-                    <td className="py-4 px-4 flex items-center gap-3">
-                      <img src={getItemImage(item)} alt={item.product.name} className="w-12 h-12 object-cover rounded border border-outline-variant/10 flex-shrink-0" />
+                    <td className="py-4 px-4 flex items-center gap-3.5">
+                      <div className="w-16 h-16 md:w-20 md:h-20 rounded-lg border border-outline-variant/20 bg-white dark:bg-surface-container-low p-1 flex-shrink-0 flex items-center justify-center overflow-hidden shadow-sm">
+                        <img 
+                          src={getItemImage(item) || 'https://via.placeholder.com/300'} 
+                          alt={item.product.name} 
+                          className="w-full h-full object-contain object-center rounded" 
+                          loading="lazy"
+                        />
+                      </div>
                       <div>
                         <h4 className="font-display-serif text-sm font-semibold text-primary line-clamp-1">{item.product.name}</h4>
                         {(item.selectedColor || item.selectedSize) && (

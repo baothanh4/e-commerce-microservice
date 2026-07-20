@@ -43,6 +43,7 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
   const [isOrderDetailsOpen, setIsOrderDetailsOpen] = useState(false);
   const [selectedAdminOrder, setSelectedAdminOrder] = useState<any | null>(null);
   const [isOrdersLoading, setIsOrdersLoading] = useState(false);
+  const [orderToast, setOrderToast] = useState<string | null>(null);
 
   const fetchAllOrders = async () => {
     setIsOrdersLoading(true);
@@ -70,12 +71,30 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
   }, [activeTab]);
 
   const handleUpdateStatus = async (orderId: string, status: string) => {
+    // Optimistic UI update
+    setOrdersList(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
+    if (selectedAdminOrder && selectedAdminOrder.id === orderId) {
+      setSelectedAdminOrder((prev: any) => prev ? { ...prev, status } : null);
+    }
+
+    const statusMap: Record<string, string> = {
+      'PENDING': 'Chờ xử lý',
+      'PROCESSING': 'Đang giao',
+      'COMPLETED': 'Đã giao',
+      'CANCELLED': 'Đã hủy'
+    };
+
     try {
       const response = await fetch(`http://localhost:8080/users/orders/${orderId}/status?status=${status}`, {
         method: 'PUT'
       });
       if (response.ok) {
+        setOrderToast(`Đã cập nhật trạng thái đơn hàng #${orderId} sang "${statusMap[status] || status}"!`);
+        setTimeout(() => setOrderToast(null), 3000);
         fetchAllOrders();
+      } else {
+        const errText = await response.text();
+        console.error("Cập nhật trạng thái thất bại:", errText);
       }
     } catch (err) {
       console.error("Lỗi cập nhật trạng thái đơn hàng:", err);
@@ -971,6 +990,13 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
                 </p>
               </div>
 
+              {orderToast && (
+                <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 rounded-lg font-mono text-xs flex items-center justify-between animate-fadeIn">
+                  <span>{orderToast}</span>
+                  <button onClick={() => setOrderToast(null)} className="font-bold text-xs uppercase ml-4">✕</button>
+                </div>
+              )}
+
               {isOrdersLoading ? (
                 <div className="card-static rounded-lg border border-outline-variant/15 p-16 text-center">
                   <span className="font-mono text-xs uppercase tracking-widest text-outline">Đang tải danh sách đơn hàng...</span>
@@ -983,7 +1009,7 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
                       <span className="font-mono text-[10px] uppercase tracking-widest text-outline">Tổng số: {ordersList.length} đơn</span>
                       <button
                         onClick={fetchAllOrders}
-                        className="font-mono text-[10px] uppercase tracking-wider text-secondary border border-secondary/30 px-3 py-1 rounded hover:bg-secondary/5 transition-colors"
+                        className="font-mono text-[10px] uppercase tracking-wider text-secondary border border-secondary/30 px-3 py-1 rounded hover:bg-secondary/5 transition-colors cursor-pointer"
                       >
                         ↻ Làm mới
                       </button>
@@ -1046,7 +1072,7 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
                                     setSelectedAdminOrder(order);
                                     setIsOrderDetailsOpen(true);
                                   }}
-                                  className="text-secondary hover:underline font-bold text-xs uppercase tracking-wider"
+                                  className="text-secondary hover:underline font-bold text-xs uppercase tracking-wider cursor-pointer"
                                 >
                                   Chi tiết
                                 </button>
@@ -1072,15 +1098,35 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
                   <div className="bg-surface max-w-3xl w-full border border-outline-variant/20 rounded-lg shadow-2xl p-6 relative flex flex-col max-h-[85vh] animate-fadeInUp">
                     {/* Modal Header */}
                     <div className="flex justify-between items-center border-b border-outline-variant/15 pb-4 mb-4">
-                      <h3 className="font-display-serif text-xl font-semibold text-primary">
-                        Hóa Đơn Chi Tiết #{selectedAdminOrder.id}
-                      </h3>
+                      <div>
+                        <h3 className="font-display-serif text-xl font-semibold text-primary">
+                          Hóa Đơn Chi Tiết #{selectedAdminOrder.id}
+                        </h3>
+                        <div className="flex items-center gap-2 mt-1 font-mono text-xs">
+                          <span className="text-outline uppercase text-[10px]">Trạng thái hiện tại:</span>
+                          <select
+                            value={selectedAdminOrder.status}
+                            onChange={(e) => handleUpdateStatus(selectedAdminOrder.id, e.target.value)}
+                            className={`font-mono text-[10px] uppercase tracking-wider font-bold rounded px-2.5 py-0.5 bg-surface border cursor-pointer focus:outline-none ${
+                              selectedAdminOrder.status === 'COMPLETED' ? 'text-emerald-600 border-emerald-500/20 bg-emerald-500/5' :
+                              selectedAdminOrder.status === 'PROCESSING' ? 'text-blue-600 border-blue-500/20 bg-blue-500/5' :
+                              selectedAdminOrder.status === 'CANCELLED' ? 'text-error border-error/20 bg-error/5' :
+                              'text-[#FF5F38] border-amber-500/20 bg-amber-500/5'
+                            }`}
+                          >
+                            <option value="PENDING">Chờ xử lý</option>
+                            <option value="PROCESSING">Đang giao</option>
+                            <option value="COMPLETED">Đã giao</option>
+                            <option value="CANCELLED">Đã hủy</option>
+                          </select>
+                        </div>
+                      </div>
                       <button
                         onClick={() => {
                           setIsOrderDetailsOpen(false);
                           setSelectedAdminOrder(null);
                         }}
-                        className="text-on-surface-variant hover:text-primary transition-colors font-mono text-sm font-bold"
+                        className="text-on-surface-variant hover:text-primary transition-colors font-mono text-sm font-bold cursor-pointer"
                       >
                         [ĐÓNG]
                       </button>
@@ -1088,6 +1134,14 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ onNavigate, 
 
                     {/* Modal Body */}
                     <div className="overflow-y-auto space-y-6 pr-1">
+                      {selectedAdminOrder.status === 'CANCELLED' && (
+                        <div className="p-3 bg-error/10 border border-error/30 text-error rounded font-mono text-xs space-y-1">
+                          <p className="font-bold uppercase tracking-wider text-[10px]">Đơn hàng đã hủy</p>
+                          {selectedAdminOrder.cancelReason && <p><span className="font-semibold">Lý do hủy:</span> {selectedAdminOrder.cancelReason}</p>}
+                          {selectedAdminOrder.cancelledAt && <p className="text-[10px] opacity-80">Thời gian hủy: {selectedAdminOrder.cancelledAt}</p>}
+                        </div>
+                      )}
+
                       {/* Recipient details */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b border-outline-variant/10 pb-4">
                         <div className="space-y-1.5 font-mono text-xs">
